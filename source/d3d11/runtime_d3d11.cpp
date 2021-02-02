@@ -13,6 +13,8 @@
 #include <imgui_internal.h>
 #include <d3dcompiler.h>
 
+#include "HackerVR.h"
+
 namespace reshade::d3d11
 {
 	struct tex_data
@@ -306,6 +308,15 @@ void reshade::d3d11::runtime_d3d11::on_present()
 
 	update_and_render_effects();
 	runtime::on_present();
+
+	// For VR use, if the DoubleTex exists, we want to update from that texture now that it has been rendered by the effect.
+	const auto it = std::find_if(_textures.begin(), _textures.end(),
+		[](const auto &item) { return item.unique_name == "V__DoubleTex" && item.impl != nullptr;} );
+	if (it != _textures.end())
+	{
+		const auto tex_impl = static_cast<tex_data *>((*it).impl);
+		CaptureVRFrame(this, tex_impl->texture.get());
+	}
 
 	// Stretch main render target back into MSAA back buffer if MSAA is active
 	if (_backbuffer_resolved != _backbuffer)
@@ -1029,6 +1040,12 @@ void reshade::d3d11::runtime_d3d11::upload_texture(const texture &texture, const
 }
 void reshade::d3d11::runtime_d3d11::destroy_texture(texture &texture)
 {
+	// Tell VR side whenever our doubleTex is destroyed, so we don't keep using it.
+	const auto it = std::find_if(_textures.begin(), _textures.end(),
+		[](const auto &item) { return item.unique_name == "V__DoubleTex" && item.impl != nullptr; });
+	if (it != _textures.end())
+		DestroySharedTexture();
+
 	delete static_cast<tex_data *>(texture.impl);
 	texture.impl = nullptr;
 }
