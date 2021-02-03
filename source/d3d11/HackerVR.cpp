@@ -363,7 +363,7 @@ void DrawStereoOnGame(ID3D11DeviceContext* pContext, ID3D11Texture2D* surface, I
 // We do the initialization check here at every frame so we can use a late-binding 
 // approach for the sharing of the data, which is more reliable.
 
-void CaptureVRFrame(reshade::d3d11::runtime_d3d11 _runtime_d3d11, ID3D11Texture2D* doubleTex)
+void CaptureVRFrame(reshade::d3d11::runtime_d3d11* _runtime_d3d11, ID3D11Texture2D* doubleTex)
 {
 	D3D11_TEXTURE2D_DESC pDesc;
 	ID3D11Device* pDevice = nullptr;
@@ -390,14 +390,14 @@ void CaptureVRFrame(reshade::d3d11::runtime_d3d11 _runtime_d3d11, ID3D11Texture2
 			pContext->CopySubresourceRegion(gGameTexture, 0, 0, 0, 0, doubleTex, 0, &rightEye);
 			pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
 
-			hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
+			//hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 
-			NvAPI_Status status = NvAPI_Stereo_SetActiveEye(_runtime_d3d11._stereo_handle, NVAPI_STEREO_EYE_LEFT);
-			if (SUCCEEDED(status))
-				pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
-			NvAPI_Status status = NvAPI_Stereo_SetActiveEye(proxy_device->_stereo_handle, NVAPI_STEREO_EYE_RIGHT);
-			if (SUCCEEDED(status))
-				pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
+			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(_runtime_d3d11._stereo_handle, NVAPI_STEREO_EYE_LEFT);
+			//if (SUCCEEDED(status))
+			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
+			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(proxy_device->_stereo_handle, NVAPI_STEREO_EYE_RIGHT);
+			//if (SUCCEEDED(status))
+			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
 		}
 //		ReleaseSetupMutex();
 
