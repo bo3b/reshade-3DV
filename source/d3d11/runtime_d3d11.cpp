@@ -315,7 +315,7 @@ void reshade::d3d11::runtime_d3d11::on_present()
 	if (it != _textures.end())
 	{
 		const auto tex_impl = static_cast<tex_data *>((*it).impl);
-		CaptureVRFrame(this, tex_impl->texture.get());
+		CaptureVRFrame(_swapchain.get(), tex_impl->texture.get());
 	}
 
 	// Stretch main render target back into MSAA back buffer if MSAA is active

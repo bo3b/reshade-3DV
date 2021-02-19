@@ -363,7 +363,7 @@ void DrawStereoOnGame(ID3D11DeviceContext* pContext, ID3D11Texture2D* surface, I
 // We do the initialization check here at every frame so we can use a late-binding 
 // approach for the sharing of the data, which is more reliable.
 
-void CaptureVRFrame(reshade::d3d11::runtime_d3d11* _runtime_d3d11, ID3D11Texture2D* doubleTex)
+void CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex)
 {
 	D3D11_TEXTURE2D_DESC pDesc;
 	ID3D11Device* pDevice = nullptr;
