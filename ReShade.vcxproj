@@ -134,9 +134,10 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)bin\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)bin\$(Platform)\$(Configuration);$(SolutionDir)source\d3d11\nvapi;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>res\exports.def</ModuleDefinitionFile>
       <DelayLoadDLLs>ws2_32.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalDependencies>nvapi64.lib;Shlwapi.lib;WinInet.lib;WS2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderModel>4.0</ShaderModel>
@@ -194,9 +195,10 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)bin\$(Platform)\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)bin\$(Platform)\$(Configuration);$(SolutionDir)source\d3d11\nvapi;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>res\exports.def</ModuleDefinitionFile>
       <DelayLoadDLLs>ws2_32.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalDependencies>nvapi64.dll;Shlwapi.lib;WinInet.lib;WS2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderModel>4.0</ShaderModel>
@@ -268,10 +270,11 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)bin\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)bin\$(Platform)\$(Configuration);$(SolutionDir)source\d3d11\nvapi;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>res\exports.def</ModuleDefinitionFile>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <DelayLoadDLLs>ws2_32.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalDependencies>nvapi64.lib;Shlwapi.lib;WinInet.lib;WS2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderModel>4.0</ShaderModel>
@@ -345,6 +348,7 @@
       <ModuleDefinitionFile>res\exports.def</ModuleDefinitionFile>
       <Profile>true</Profile>
       <DelayLoadDLLs>ws2_32.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalDependencies>nvapi64.dll;Shlwapi.lib;WinInet.lib;WS2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderModel>4.0</ShaderModel>

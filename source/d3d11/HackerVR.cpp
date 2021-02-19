@@ -17,6 +17,7 @@
 #include "HackerVR.h"
 
 #include "dll_log.hpp"
+#include "nvapi/nvapi.h"
 
 // -----------------------------------------------------------------------------
 
@@ -38,6 +39,33 @@ HANDLE gGameSharedHandle = NULL;
 // the creation or reset of the graphic device.  
 HANDLE gSetupMutex = NULL;
 
+StereoHandle gStereoHandle = NULL;
+
+
+void Nv3DDirectSetup()
+{
+	NvAPI_Status status = NvAPI_Initialize();
+	if (status != NVAPI_OK)
+	{
+		LOG(WARN) << "D3D11CreateDeviceAndSwapChain SetDriverMode" << " failed with error code " << status << '.';
+		return;
+	}
+
+	status = NvAPI_Stereo_SetDriverMode(NVAPI_STEREO_DRIVER_MODE_DIRECT);
+	if (status != NVAPI_OK)
+		LOG(WARN) << "D3D11CreateDeviceAndSwapChain SetDriverMode" << " failed with error code " << status << '.';
+
+	LOG(INFO) << "D3D11CreateDeviceAndSwapChain SetDriverMode" << " successfully set " << status << '.';
+}
+
+void NvCreateStereoHandle(D3D11Device* device_proxy)
+{
+	NvAPI_Status status = NvAPI_Stereo_CreateHandleFromIUnknown(device_proxy->_orig, &gStereoHandle);
+	if (FAILED(status))
+		LOG(WARN) << "NvAPI_Stereo_CreateHandleFromIUnknown failed: " << status;
+
+	LOG(INFO) << "NvAPI_Stereo_CreateHandleFromIUnknown " << " successfully created " << status << '.';
+}
 
 // ----------------------------------------------------------------------
 // Fatal error handling.  This is for scenarios that should never happen,
@@ -390,14 +418,21 @@ void CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex)
 			pContext->CopySubresourceRegion(gGameTexture, 0, 0, 0, 0, doubleTex, 0, &rightEye);
 			pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
 
-			//hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 
-			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(_runtime_d3d11._stereo_handle, NVAPI_STEREO_EYE_LEFT);
-			//if (SUCCEEDED(status))
-			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
-			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(proxy_device->_stereo_handle, NVAPI_STEREO_EYE_RIGHT);
-			//if (SUCCEEDED(status))
-			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
+			ID3D11Texture2D* backBuffer = nullptr;
+			NvAPI_Status status;
+			HRESULT hr;
+			hr = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer));
+			if (SUCCEEDED(hr) && backBuffer != nullptr)
+			{
+				status = NvAPI_Stereo_SetActiveEye(gStereoHandle, NVAPI_STEREO_EYE_LEFT);
+				if (SUCCEEDED(status))
+					pContext->CopySubresourceRegion(backBuffer, 0, 0, 0, 0, doubleTex, 0, &leftEye);
+				status = NvAPI_Stereo_SetActiveEye(gStereoHandle, NVAPI_STEREO_EYE_RIGHT);
+				if (SUCCEEDED(status))
+					pContext->CopySubresourceRegion(backBuffer, 0, 0, 0, 0, doubleTex, 0, &rightEye);
+				backBuffer->Release();
+			}
 		}
 //		ReleaseSetupMutex();
 
