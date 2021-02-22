@@ -226,6 +226,9 @@
       <Filter>hooks\windows</Filter>
     </ClCompile>
     <ClCompile Include="source\d3d11\HackerVR.cpp" />
+    <ClCompile Include="source\HackerVR.cpp" />
+    <ClCompile Include="source\vr.cpp" />
+    <ClCompile Include="source\d3d11\vr_d3d11.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\dll_config.hpp">
@@ -379,6 +382,9 @@
       <Filter>resources</Filter>
     </ClInclude>
     <ClInclude Include="source\d3d11\HackerVR.h" />
+    <ClInclude Include="source\HackerVR.h" />
+    <ClInclude Include="source\vr.hpp" />
+    <ClInclude Include="source\d3d11\vr_d3d11.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\resource.rc">
