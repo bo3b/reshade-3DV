@@ -8,6 +8,3 @@
 
 void CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex);
 void DestroySharedTexture();
-
-void Nv3DDirectSetup();
-void NvCreateStereoHandle(D3D11Device* device_proxy);
