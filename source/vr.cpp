@@ -3,7 +3,7 @@
 // Copied from 3Dmigoto version with HelixVision, but modified to remove all nvidia
 // 3D Vision requirements.
 //
-// This is the base class for the HackerVR objects, with subclasses
+// This is the base class for the vr objects, with subclasses
 // for the DX11 and DX12 use cases, to handle the variance in the texture
 // structures being passed.  The output double-width texture to Katanga
 // will remain as a DX11 object as Katanga will remain DX11, and using
@@ -15,11 +15,11 @@
 
 // -----------------------------------------------------------------------------
 
-HackerVR::HackerVR()
+vr::vr()
 {
 }
 
-HackerVR::~HackerVR()
+vr::~vr()
 {
 }
 
@@ -74,7 +74,7 @@ static void FatalExit(LPCWSTR errorString, HRESULT code)
 // is the Handle, from which a shared surface is created.  The Handle is written
 // into the gMappedView here, and read in Katanga.
 
-void HackerVR::CreateFileMappedIPC()
+void vr::CreateFileMappedIPC()
 {
 	TCHAR szName[] = TEXT("Local\\KatangaMappedFile");
 
@@ -85,7 +85,7 @@ void HackerVR::CreateFileMappedIPC()
 		0,								// maximum object size (high-order DWORD)
 		sizeof(UINT),					// maximum object size (low-order DWORD)
 		szName);						// name of mapping object
-	if (gMappedFile == NULL) FatalExit(L"HackerVR: could not CreateFileMapping for VR IPC", GetLastError());
+	if (gMappedFile == NULL) FatalExit(L"vr: could not CreateFileMapping for VR IPC", GetLastError());
 
 	gMappedView = MapViewOfFile(
 		gMappedFile,					// handle to map file object
@@ -93,14 +93,14 @@ void HackerVR::CreateFileMappedIPC()
 		0,								// No offset in file
 		0,
 		sizeof(UINT));					// Map full buffer
-	if (gMappedView == NULL) FatalExit(L"HackerVR: could not MapViewOfFile for VR IPC", GetLastError());
+	if (gMappedView == NULL) FatalExit(L"vr: could not MapViewOfFile for VR IPC", GetLastError());
 
-	LOG(INFO) << "HackerVR: Mapped file created for VR IPC: " << gMappedView << "->" << *(UINT*)(gMappedView);
+	LOG(INFO) << "vr: Mapped file created for VR IPC: " << gMappedView << "->" << *(UINT*)(gMappedView);
 }
 
-void HackerVR::ReleaseFileMappedIPC()
+void vr::ReleaseFileMappedIPC()
 {
-	LOG(INFO) << "HackerVR: Unmap file for " << gMappedFile;
+	LOG(INFO) << "vr: Unmap file for " << gMappedFile;
 	if (gMappedFile != NULL)
 	{
 		UnmapViewOfFile(gMappedView);
@@ -117,19 +117,19 @@ void HackerVR::ReleaseFileMappedIPC()
 // as a late binding.  Both sides call CreateMutex, so we don't need
 // to verify which happens first.
 
-void HackerVR::CreateCaptureMutex()
+void vr::CreateCaptureMutex()
 {
 	gSetupMutex = CreateMutex(nullptr, false, L"KatangaSetupMutex");
 
-	LOG(INFO) << "HackerVR: CreateMutex called: " << gSetupMutex;
+	LOG(INFO) << "vr: CreateMutex called: " << gSetupMutex;
 
 	if (gSetupMutex == NULL)
-		FatalExit(L"HackerVR: could not find KatangaSetupMutex", GetLastError());
+		FatalExit(L"vr: could not find KatangaSetupMutex", GetLastError());
 }
 
-void HackerVR::DisposeCaptureMutex()
+void vr::DisposeCaptureMutex()
 {
-	LOG(INFO) << "HackerVR: CloseHandle on Mutex called: " << gSetupMutex;
+	LOG(INFO) << "vr: CloseHandle on Mutex called: " << gSetupMutex;
 
 	if (gSetupMutex != NULL)
 		CloseHandle(gSetupMutex);
@@ -142,7 +142,7 @@ void HackerVR::DisposeCaptureMutex()
 // We should be OK using a 1 second wait here, if we cannot grab the mutex from the
 // Katanga side in 1 second, something is definitely broken.
 
-void HackerVR::CaptureSetupMutex()
+void vr::CaptureSetupMutex()
 {
 	DWORD waitResult;
 
@@ -171,7 +171,7 @@ void HackerVR::CaptureSetupMutex()
 // side creates the mutex as active and locked, or when Reset/Resize is called and we grab
 // the mutex to lock out the VR side.
 
-void HackerVR::ReleaseSetupMutex()
+void vr::ReleaseSetupMutex()
 {
 	LOG(DEBUG) << "<- ReleaseSetupMutex mutex:" << gSetupMutex;
 
@@ -191,9 +191,9 @@ void HackerVR::ReleaseSetupMutex()
 // if they turn off the effect, but also when the game calls ResizeBuffers.  It will
 // be rebuilt automatically when the CaptureVRFrame is next called.
 
-void HackerVR::DestroySharedTexture()
+void vr::DestroySharedTexture()
 {
-	LOG(INFO) << "HackerVR:DX11 DestroySharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
+	LOG(INFO) << "vr:DX11 DestroySharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
 
 	// Save possible prior usage to be disposed after we recreate.
 	ID3D11Texture2D* oldGameTexture = gGameTexture;
@@ -220,14 +220,14 @@ void HackerVR::DestroySharedTexture()
 // although using a TriggerEvent with some C# interop might work.  We'll only
 // do that work if this proves to be a problem.
 
-void HackerVR::CreateSharedTexture(ID3D11Texture2D* doubleTex)
+void vr::CreateSharedTexture(ID3D11Texture2D* doubleTex)
 {
 	HRESULT hr;
 	ID3D11Device* pDevice;
 	D3D11_TEXTURE2D_DESC desc;
 	ID3D11Texture2D* oldGameTexture = nullptr;
 
-	LOG(INFO) << "HackerVR:DX11 CreateSharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
+	LOG(INFO) << "vr:DX11 CreateSharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
 
 	// At first Present or ResizeBuffer call, we'll build the file mapped IPC.  Could conceivably
 	// be done at 3Dmigoto startup.
@@ -241,7 +241,7 @@ void HackerVR::CreateSharedTexture(ID3D11Texture2D* doubleTex)
 	// the Katanga side can switch to grey screen and stop any use of the old share. 
 	if (gGameSharedHandle != NULL)
 	{
-		LOG(INFO) << "HackerVR:CreateSharedTexture rebuild gGameSharedHandle. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle;
+		LOG(INFO) << "vr:CreateSharedTexture rebuild gGameSharedHandle. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle;
 
 		// Save possible prior usage to be disposed after we recreate.
 		oldGameTexture = gGameTexture;
@@ -349,7 +349,7 @@ void DrawStereoOnGame(ID3D11DeviceContext* pContext, ID3D11Texture2D* surface, I
 // We do the initialization check here at every frame so we can use a late-binding 
 // approach for the sharing of the data, which is more reliable.
 
-void HackerVR::CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex)
+void vr::CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex)
 {
 	D3D11_TEXTURE2D_DESC pDesc;
 	ID3D11Device* pDevice = nullptr;

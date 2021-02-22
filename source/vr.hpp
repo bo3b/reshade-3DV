@@ -5,23 +5,23 @@
 
 #include "runtime.hpp"
 
-class HackerVR
+class vr
 {
 public:
-	HackerVR();
-	~HackerVR();
+	vr();
+	~vr();
 
 	void CreateFileMappedIPC();
 	void ReleaseFileMappedIPC();
+
 	void CreateCaptureMutex();
 	void DisposeCaptureMutex();
 	void CaptureSetupMutex();
 	void ReleaseSetupMutex();
 
-	void DestroySharedTexture();
 	void CreateSharedTexture(ID3D11Texture2D* doubleTex);
+	void DestroySharedTexture();
 	void CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex);
-
 
 private:
 	// For the IPC between the game here with Reshade enabled, and the Katanga VR.
