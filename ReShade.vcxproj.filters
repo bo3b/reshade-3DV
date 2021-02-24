@@ -229,6 +229,7 @@
     <ClCompile Include="source\HackerVR.cpp" />
     <ClCompile Include="source\vr.cpp" />
     <ClCompile Include="source\d3d11\vr_d3d11.cpp" />
+    <ClCompile Include="source\d3d12\vr_d3d12.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\dll_config.hpp">
@@ -385,6 +386,7 @@
     <ClInclude Include="source\HackerVR.h" />
     <ClInclude Include="source\vr.hpp" />
     <ClInclude Include="source\d3d11\vr_d3d11.hpp" />
+    <ClInclude Include="source\d3d12\vr_d3d12.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\resource.rc">
