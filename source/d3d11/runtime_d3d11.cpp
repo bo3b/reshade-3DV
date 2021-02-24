@@ -13,7 +13,7 @@
 #include <imgui_internal.h>
 #include <d3dcompiler.h>
 
-#include "HackerVR.h"
+#include "vr_d3d11.hpp"
 
 namespace reshade::d3d11
 {

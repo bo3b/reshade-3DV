@@ -38,7 +38,7 @@ vr::~vr()
 // least the user gets immediate notification and does not have to sift around
 // to find log files.  
 
-static DECLSPEC_NORETURN void DoubleBeepExit()
+DECLSPEC_NORETURN void vr::DoubleBeepExit()
 {
 	// Fatal error somewhere, known to crash, might as well exit cleanly
 	// with some notification.
@@ -57,7 +57,7 @@ static DECLSPEC_NORETURN void DoubleBeepExit()
 	ExitProcess(0xc0000135);
 }
 
-static void FatalExit(LPCWSTR errorString, HRESULT code)
+void vr::FatalExit(LPCWSTR errorString, HRESULT code)
 {
 	wchar_t info[512];
 
@@ -220,11 +220,11 @@ void vr::DestroySharedTexture()
 // although using a TriggerEvent with some C# interop might work.  We'll only
 // do that work if this proves to be a problem.
 
-void vr::CreateSharedTexture(ID3D11Texture2D* doubleTex)
+void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 {
 	HRESULT hr;
 	ID3D11Device* pDevice;
-	D3D11_TEXTURE2D_DESC desc;
+	D3D11_TEXTURE2D_DESC desc = { 0 };
 	ID3D11Texture2D* oldGameTexture = nullptr;
 
 	LOG(INFO) << "vr:DX11 CreateSharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
@@ -254,10 +254,10 @@ void vr::CreateSharedTexture(ID3D11Texture2D* doubleTex)
 	}
 
 
-	// Now that we have a proper texture from the rehade copy, let's also make a 
-	// DX11 Texture2D exact copy, so that we can snapshot the game output. 
-
-	doubleTex->GetDesc(&desc);
+	// Now that we have a proper texture from the reshade copy, let's also make a 
+	// DX11 Texture2D exact copy, so that we can snapshot the game output.
+	// Buffer width is already 2x game size, as it comes from SuperDepth doubleTex.
+	gameTexture->GetDesc(&desc);
 
 	// Some games like TheSurge and Dishonored2 will specify a DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
 	// as their backbuffer.  This doesn't work for us because our output is going to the VR HMD,
@@ -275,20 +275,13 @@ void vr::CreateSharedTexture(ID3D11Texture2D* doubleTex)
 	// This texture needs to use the Shared flag, so that we can share it to 
 	// another Device.  Because these are all DX11 objects, the share will work.
 
-// For half SBS, just single width.  Half for each eye.
-	//desc.Width *= 2;								// Double width texture for stereo.
 	desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;	// Must add bind flag, so SRV can be created in Unity.
 	desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;	// To be shared. maybe D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is better
 													// But we never seem to see any contention between game and Katanga.
 	LOG(INFO) << "  Width: " << desc.Width << ", Height: " << desc.Height << ", Format: " << desc.Format;
 
-	doubleTex->GetDevice(&pDevice);
-	if (pDevice == nullptr) FatalExit(L"Failed to GetDevice", 0);
-	{
-		hr = pDevice->CreateTexture2D(&desc, NULL, &gGameTexture);
-		if (FAILED(hr)) FatalExit(L"Fail to create shared stereo Texture", hr);
-	}
-	pDevice->Release();
+	oldGameTexture = gGameTexture;
+	gGameTexture = gameTexture;
 
 	LOG(INFO) << " pDevice create new gGameTexture: " << gGameTexture;
 
@@ -345,54 +338,5 @@ void DrawStereoOnGame(ID3D11DeviceContext* pContext, ID3D11Texture2D* surface, I
 #endif
 
 
-// Capture the double width texture and transfer the data across the MappedFileIPC to the VR app.
-// We do the initialization check here at every frame so we can use a late-binding 
-// approach for the sharing of the data, which is more reliable.
 
-void vr::CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex)
-{
-	D3D11_TEXTURE2D_DESC pDesc;
-	ID3D11Device* pDevice = nullptr;
-	ID3D11DeviceContext* pContext = nullptr;
-
-	// Create the shared texture at first Present, or whenever the gGameSharedHandle is
-	// zeroed out as part of a ResizeBuffers.
-	if (gGameSharedHandle == NULL)
-		CreateSharedTexture(doubleTex);
-
-	// Copy the current data from doubleTex texture into our shared texture every frame.
-	if (doubleTex != nullptr && gGameTexture != nullptr)
-	{
-		doubleTex->GetDesc(&pDesc);
-		doubleTex->GetDevice(&pDevice);
-		pDevice->GetImmediateContext(&pContext);
-
-//		CaptureSetupMutex();
-		{
-			D3D11_BOX rightEye = { pDesc.Width / 2, 0, 0, pDesc.Width, pDesc.Height, 1 };
-			D3D11_BOX leftEye = { 0, 0, 0, pDesc.Width / 2, pDesc.Height, 1 };
-
-			// SBS needs eye swap to match 3D Vision R/L cross-eyed format of Katanga
-			pContext->CopySubresourceRegion(gGameTexture, 0, 0, 0, 0, doubleTex, 0, &rightEye);
-			pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
-
-			//hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
-
-			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(_runtime_d3d11._stereo_handle, NVAPI_STEREO_EYE_LEFT);
-			//if (SUCCEEDED(status))
-			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
-			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(proxy_device->_stereo_handle, NVAPI_STEREO_EYE_RIGHT);
-			//if (SUCCEEDED(status))
-			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
-		}
-//		ReleaseSetupMutex();
-
-
-#ifdef _DEBUG
-		DrawStereoOnGame(pContext, gGameTexture, doubleTex, pDesc.Width, pDesc.Height);
-#endif
-		pContext->Release();
-		pDevice->Release();
-	}
-}
 
