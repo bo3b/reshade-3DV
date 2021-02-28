@@ -57,10 +57,12 @@ EXPORTS
 	DXGID3D10GetLayeredDeviceSize
 	DXGID3D10RegisterLayers
 
-	DXGIDumpJournal
-	DXGIDeclareAdapterRemovalSupport
-	DXGIGetDebugInterface1
-	DXGIReportAdapterConfiguration
+	CompatValue PRIVATE
+	CompatString PRIVATE
+	DXGIDumpJournal PRIVATE
+	DXGIDeclareAdapterRemovalSupport PRIVATE
+	DXGIGetDebugInterface1 PRIVATE
+	DXGIReportAdapterConfiguration PRIVATE
 
 	; opengl32.dll
 	glAccum
