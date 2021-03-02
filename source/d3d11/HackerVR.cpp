@@ -64,7 +64,7 @@ void NvCreateStereoHandle(D3D11Device* device_proxy)
 	if (FAILED(status))
 		LOG(WARN) << "NvAPI_Stereo_CreateHandleFromIUnknown failed: " << status;
 
-	LOG(INFO) << "NvAPI_Stereo_CreateHandleFromIUnknown " << " successfully created " << status << '.';
+	LOG(INFO) << "NvAPI_Stereo_CreateHandleFromIUnknown " << " successfully created " << status << " stereohandle: " << gStereoHandle;
 }
 
 // ----------------------------------------------------------------------
@@ -425,21 +425,29 @@ void CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex)
 			hr = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer));
 			if (SUCCEEDED(hr) && backBuffer != nullptr)
 			{
+				D3D11_TEXTURE2D_DESC bbDesc;
+				backBuffer->GetDesc(&bbDesc);
+
 				status = NvAPI_Stereo_SetActiveEye(gStereoHandle, NVAPI_STEREO_EYE_LEFT);
 				if (SUCCEEDED(status))
 					pContext->CopySubresourceRegion(backBuffer, 0, 0, 0, 0, doubleTex, 0, &leftEye);
+				else
+					LOG(INFO) << "  Failed SetActiveEye leftEye: " << status; // << " for rect: " << leftEye;
+
 				status = NvAPI_Stereo_SetActiveEye(gStereoHandle, NVAPI_STEREO_EYE_RIGHT);
 				if (SUCCEEDED(status))
 					pContext->CopySubresourceRegion(backBuffer, 0, 0, 0, 0, doubleTex, 0, &rightEye);
+				else
+					LOG(INFO) << "  Failed SetActiveEye rightEye: " << status; // << " for rect: " << rightEye;
+
+#ifdef _DEBUG
+				DrawStereoOnGame(pContext, backBuffer, doubleTex, bbDesc.Width, bbDesc.Height);
+#endif
 				backBuffer->Release();
 			}
 		}
 //		ReleaseSetupMutex();
 
-
-#ifdef _DEBUG
-		DrawStereoOnGame(pContext, gGameTexture, doubleTex, pDesc.Width, pDesc.Height);
-#endif
 		pContext->Release();
 		pDevice->Release();
 	}
