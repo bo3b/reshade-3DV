@@ -55,6 +55,7 @@ HOOK_EXPORT HRESULT WINAPI D3D11CreateDeviceAndSwapChain(IDXGIAdapter *pAdapter,
 #ifndef NDEBUG
 	// Remove flag that prevents turning on the debug layer
 	Flags &= ~D3D11_CREATE_DEVICE_PREVENT_ALTERING_LAYER_SETTINGS_FROM_REGISTRY;
+	Flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
 	// Use local feature level variable in case the application did not pass one in
