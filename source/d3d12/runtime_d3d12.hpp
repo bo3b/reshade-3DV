@@ -9,6 +9,8 @@
 #include "state_tracking.hpp"
 #include <dxgi1_5.h>
 
+#include "vr_d3d12.hpp"
+
 namespace reshade::d3d12
 {
 	class runtime_d3d12 : public runtime
@@ -97,6 +99,8 @@ namespace reshade::d3d12
 
 		com_ptr<ID3D12Resource> _depth_texture;
 		ID3D12Resource *_depth_texture_override = nullptr;
+
+		vr_d3d12 *_vr;
 #endif
 	};
 }

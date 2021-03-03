@@ -8,8 +8,12 @@
 
 class vr_d3d11 : public vr
 {
-	vr_d3d11();
+public:
+	vr_d3d11(IDXGISwapChain* swapchain);
 	~vr_d3d11();
 
-	void CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex);
+	void CaptureVRFrame(ID3D11Texture2D* doubleTex);
+
+private:
+	IDXGISwapChain* _swapchain;
 };

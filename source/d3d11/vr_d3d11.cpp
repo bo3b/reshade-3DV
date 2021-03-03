@@ -19,8 +19,9 @@
 #include "dll_log.hpp"
 
 
-vr_d3d11::vr_d3d11()
+vr_d3d11::vr_d3d11(IDXGISwapChain* swapchain)
 {
+	_swapchain = swapchain;
 }
 vr_d3d11::~vr_d3d11()
 {
@@ -33,7 +34,7 @@ vr_d3d11::~vr_d3d11()
 // We do the initialization check here at every frame so we can use a late-binding 
 // approach for the sharing of the data, which is more reliable.
 
-void vr_d3d11::CaptureVRFrame(IDXGISwapChain* swapchain, ID3D11Texture2D* doubleTex)
+void vr_d3d11::CaptureVRFrame(ID3D11Texture2D* doubleTex)
 {
 	D3D11_TEXTURE2D_DESC pDesc;
 	ID3D11Device* pDevice = nullptr;

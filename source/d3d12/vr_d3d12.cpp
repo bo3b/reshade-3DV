@@ -19,8 +19,9 @@
 #include "dll_log.hpp"
 
 
-vr_d3d12::vr_d3d12()
+vr_d3d12::vr_d3d12(IDXGISwapChain3 *swapchain)
 {
+	_swapchain = swapchain;
 }
 vr_d3d12::~vr_d3d12()
 {
@@ -33,49 +34,43 @@ vr_d3d12::~vr_d3d12()
 // We do the initialization check here at every frame so we can use a late-binding 
 // approach for the sharing of the data, which is more reliable.
 
-void vr_d3d12::CaptureVRFrame(IDXGISwapChain* swapchain, ID3D12Resource* doubleTex)
+void vr_d3d12::CaptureVRFrame(ID3D12Resource* doubleTex)
 {
 	D3D11_TEXTURE2D_DESC pDesc;
 	ID3D11Device* pDevice = nullptr;
-	ID3D11DeviceContext* pContext = nullptr;
+	ID3D12GraphicsCommandList* pCmdList = nullptr;
 
 	// Create the shared texture at first Present, or whenever the gGameSharedHandle is
 	// zeroed out as part of a ResizeBuffers.
-	if (gGameSharedHandle == NULL)
-		CreateSharedTexture(doubleTex);
+	//if (gGameSharedHandle == NULL)
+	//	CreateSharedTexture(doubleTex);
 
 	// Copy the current data from doubleTex texture into our shared texture every frame.
 	if (doubleTex != nullptr && gGameTexture != nullptr)
 	{
-		doubleTex->GetDesc(&pDesc);
-		doubleTex->GetDevice(&pDevice);
-		pDevice->GetImmediateContext(&pContext);
-
-//		CaptureSetupMutex();
+//		doubleTex->GetDesc(&pDesc);
+//		doubleTex->GetDevice(&pDevice);
+//		pDevice->GetImmediateContext(&pCmdList);
+//
+////		CaptureSetupMutex();
 		{
-			D3D11_BOX rightEye = { pDesc.Width / 2, 0, 0, pDesc.Width, pDesc.Height, 1 };
-			D3D11_BOX leftEye = { 0, 0, 0, pDesc.Width / 2, pDesc.Height, 1 };
+//			D3D12_BOX rightEye = { pDesc.Width / 2, 0, 0, pDesc.Width, pDesc.Height, 1 };
+//			D3D12_BOX leftEye = { 0, 0, 0, pDesc.Width / 2, pDesc.Height, 1 };
+//
+//			CD3DX12_TEXTURE_COPY_LOCATION Dst(pDestinationResource, i + FirstSubresource);
+//			CD3DX12_TEXTURE_COPY_LOCATION source(pIntermediate, pLayouts[i]);
+//
+//			// SBS needs eye swap to match 3D Vision R/L cross-eyed format of Katanga
+//			pCmdList->CopyTextureRegion(gGameTexture, 0, 0, 0, doubleTex, &rightEye);
+//			pCmdList->CopyTextureRegion(gGameTexture, pDesc.Width / 2, 0, 0, doubleTex, &leftEye);
 
-			// SBS needs eye swap to match 3D Vision R/L cross-eyed format of Katanga
-			pContext->CopySubresourceRegion(gGameTexture, 0, 0, 0, 0, doubleTex, 0, &rightEye);
-			pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
-
-			//hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
-
-			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(_runtime_d3d11._stereo_handle, NVAPI_STEREO_EYE_LEFT);
-			//if (SUCCEEDED(status))
-			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
-			//NvAPI_Status status = NvAPI_Stereo_SetActiveEye(proxy_device->_stereo_handle, NVAPI_STEREO_EYE_RIGHT);
-			//if (SUCCEEDED(status))
-			//	pContext->CopySubresourceRegion(gGameTexture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
+#ifdef _DEBUG
+			DrawStereoOnGame(pCmdList, gGameTexture, doubleTex, pDesc.Width, pDesc.Height);
+#endif
 		}
 //		ReleaseSetupMutex();
 
-
-#ifdef _DEBUG
-		DrawStereoOnGame(pContext, gGameTexture, doubleTex, pDesc.Width, pDesc.Height);
-#endif
-		pContext->Release();
+		pCmdList->Release();
 		pDevice->Release();
 	}
 }

@@ -223,7 +223,6 @@ void vr::DestroySharedTexture()
 void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 {
 	HRESULT hr;
-	ID3D11Device* pDevice;
 	D3D11_TEXTURE2D_DESC desc = { 0 };
 	ID3D11Texture2D* oldGameTexture = nullptr;
 

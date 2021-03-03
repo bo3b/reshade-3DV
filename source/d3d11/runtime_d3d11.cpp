@@ -13,8 +13,6 @@
 #include <imgui_internal.h>
 #include <d3dcompiler.h>
 
-#include "vr_d3d11.hpp"
-
 namespace reshade::d3d11
 {
 	struct tex_data
@@ -56,7 +54,7 @@ namespace reshade::d3d11
 extern bool is_windows7();
 
 reshade::d3d11::runtime_d3d11::runtime_d3d11(ID3D11Device *device, IDXGISwapChain *swapchain, state_tracking_context *state_tracking) :
-	_app_state(device), _state_tracking(*state_tracking), _device(device), _swapchain(swapchain)
+	_app_state(device), _state_tracking(*state_tracking), _device(device), _swapchain(swapchain), _vr(new vr_d3d11(swapchain))
 {
 	assert(device != nullptr && swapchain != nullptr && state_tracking != nullptr);
 
@@ -315,7 +313,7 @@ void reshade::d3d11::runtime_d3d11::on_present()
 	if (it != _textures.end())
 	{
 		const auto tex_impl = static_cast<tex_data *>((*it).impl);
-		CaptureVRFrame(_swapchain.get(), tex_impl->texture.get());
+		_vr->CaptureVRFrame(tex_impl->texture.get());
 	}
 
 	// Stretch main render target back into MSAA back buffer if MSAA is active
@@ -1044,7 +1042,7 @@ void reshade::d3d11::runtime_d3d11::destroy_texture(texture &texture)
 	const auto it = std::find_if(_textures.begin(), _textures.end(),
 		[](const auto &item) { return item.unique_name == "V__DoubleTex" && item.impl != nullptr; });
 	if (it != _textures.end())
-		DestroySharedTexture();
+		_vr->DestroySharedTexture();	
 
 	delete static_cast<tex_data *>(texture.impl);
 	texture.impl = nullptr;

@@ -79,7 +79,7 @@ namespace reshade::d3d12
 }
 
 reshade::d3d12::runtime_d3d12::runtime_d3d12(ID3D12Device *device, ID3D12CommandQueue *queue, IDXGISwapChain3 *swapchain, state_tracking_context *state_tracking) :
-	_state_tracking(*state_tracking), _device(device), _swapchain(swapchain), _commandqueue(queue)
+	_state_tracking(*state_tracking), _device(device), _swapchain(swapchain), _commandqueue(queue), _vr(new vr_d3d12(swapchain))
 {
 	assert(device != nullptr && queue != nullptr && state_tracking != nullptr);
 

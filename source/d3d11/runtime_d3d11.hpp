@@ -9,6 +9,8 @@
 #include "state_block_d3d11.hpp"
 #include "state_tracking.hpp"
 
+#include "vr_d3d11.hpp"
+
 namespace reshade::d3d11
 {
 	class runtime_d3d11 : public runtime
@@ -88,6 +90,8 @@ namespace reshade::d3d11
 		com_ptr<ID3D11Texture2D> _depth_texture;
 		com_ptr<ID3D11ShaderResourceView> _depth_texture_srv;
 		ID3D11Texture2D *_depth_texture_override = nullptr;
+
+		vr_d3d11 *_vr;
 #endif
 	};
 }
