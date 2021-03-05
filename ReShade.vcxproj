@@ -148,6 +148,10 @@
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy Bypass -File tools\verbuild.ps1 res\version.h -config "$(Configuration)" -platform "$(Platform)"</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /y $(TargetDir)reshade64.dll "W:\SteamLibrary\steamapps\common\Rise of the Tomb Raider\dxgi.dll"
+xcopy /y $(TargetDir)reshade64.pdb "W:\SteamLibrary\steamapps\common\Rise of the Tomb Raider\dxgi.pdb"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug App|Win32'">
     <ClCompile>
