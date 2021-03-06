@@ -27,21 +27,21 @@ public:
 
 protected:
 	// For the IPC between the game here with Reshade enabled, and the Katanga VR.
-	HANDLE gMappedFile = NULL;
-	LPVOID gMappedView = nullptr;
+	HANDLE _mapped_file = NULL;
+	LPVOID _mapped_view = nullptr;
 
 	// The surface that we copy the current stereo game frame into. It is shared.
 	// It starts as a Texture so that it is created stereo, and is shared 
 	// via file mapped IPC. This is ID3D11Texture2D because Katanga is DX11 only.
-	ID3D11Texture2D* gGameTexture = nullptr;
+	ID3D11Texture2D* _shared_texture = nullptr;
 
-	// The gGameSharedHandle is set always a 32 bit value, not a pointer.  Even for
+	// The _game_sharedhandle is set always a 32 bit value, not a pointer.  Even for
 	// x64 games, because Windows maps these.  Unity side will always use x32 value.
-	// The gGameSharedHandle is the shared reference to the actual gGameTexture.
-	HANDLE gGameSharedHandle = NULL;
+	// The _game_sharedhandle is the shared reference to the actual _shared_texture.
+	HANDLE _game_sharedhandle = NULL;
 
 	// The Named Mutex to prevent the VR side from interfering with game side, during
 	// the creation or reset of the graphic device.  
-	HANDLE gSetupMutex = NULL;
+	HANDLE _setup_mutex = NULL;
 };
 

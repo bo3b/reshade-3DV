@@ -71,42 +71,42 @@ void vr::FatalExit(LPCWSTR errorString, HRESULT code)
 
 // -----------------------------------------------------------------------------
 
-// Creates the file mapped IPC to share the gGameSharedHandle with the VR/Unity/Katanga
+// Creates the file mapped IPC to share the _game_sharedhandle with the VR/Unity/Katanga
 // side, so that it can display the shared surface.  The only thing we need for this
 // is the Handle, from which a shared surface is created.  The Handle is written
-// into the gMappedView here, and read in Katanga.
+// into the _mapped_view here, and read in Katanga.
 
 void vr::CreateFileMappedIPC()
 {
 	TCHAR szName[] = TEXT("Local\\KatangaMappedFile");
 
-	gMappedFile = CreateFileMapping(
+	_mapped_file = CreateFileMapping(
 		INVALID_HANDLE_VALUE,			// use paging file
 		NULL,							// default security
 		PAGE_READWRITE,					// read/write access
 		0,								// maximum object size (high-order DWORD)
 		sizeof(UINT),					// maximum object size (low-order DWORD)
 		szName);						// name of mapping object
-	if (gMappedFile == NULL) FatalExit(L"vr: could not CreateFileMapping for VR IPC", GetLastError());
+	if (_mapped_file == NULL) FatalExit(L"vr: could not CreateFileMapping for VR IPC", GetLastError());
 
-	gMappedView = MapViewOfFile(
-		gMappedFile,					// handle to map file object
+	_mapped_view = MapViewOfFile(
+		_mapped_file,					// handle to map file object
 		FILE_MAP_ALL_ACCESS,			// read/write permission
 		0,								// No offset in file
 		0,
 		sizeof(UINT));					// Map full buffer
-	if (gMappedView == NULL) FatalExit(L"vr: could not MapViewOfFile for VR IPC", GetLastError());
+	if (_mapped_view == NULL) FatalExit(L"vr: could not MapViewOfFile for VR IPC", GetLastError());
 
-	LOG(INFO) << "vr: Mapped file created for VR IPC: " << gMappedView << "->" << *(UINT*)(gMappedView);
+	LOG(INFO) << "vr: Mapped file created for VR IPC: " << _mapped_view << "->" << *(UINT*)(_mapped_view);
 }
 
 void vr::ReleaseFileMappedIPC()
 {
-	LOG(INFO) << "vr: Unmap file for " << gMappedFile;
-	if (gMappedFile != NULL)
+	LOG(INFO) << "vr: Unmap file for " << _mapped_file;
+	if (_mapped_file != NULL)
 	{
-		UnmapViewOfFile(gMappedView);
-		CloseHandle(gMappedFile);
+		UnmapViewOfFile(_mapped_view);
+		CloseHandle(_mapped_file);
 	}
 }
 
@@ -121,20 +121,20 @@ void vr::ReleaseFileMappedIPC()
 
 void vr::CreateCaptureMutex()
 {
-	gSetupMutex = CreateMutex(nullptr, false, L"KatangaSetupMutex");
+	_setup_mutex = CreateMutex(nullptr, false, L"KatangaSetupMutex");
 
-	LOG(INFO) << "vr: CreateMutex called: " << gSetupMutex;
+	LOG(INFO) << "vr: CreateMutex called: " << _setup_mutex;
 
-	if (gSetupMutex == NULL)
+	if (_setup_mutex == NULL)
 		FatalExit(L"vr: could not find KatangaSetupMutex", GetLastError());
 }
 
 void vr::DisposeCaptureMutex()
 {
-	LOG(INFO) << "vr: CloseHandle on Mutex called: " << gSetupMutex;
+	LOG(INFO) << "vr: CloseHandle on Mutex called: " << _setup_mutex;
 
-	if (gSetupMutex != NULL)
-		CloseHandle(gSetupMutex);
+	if (_setup_mutex != NULL)
+		CloseHandle(_setup_mutex);
 }
 
 // Used for blocking around the CopySubResourceRegion for updating the frame.
@@ -148,12 +148,12 @@ void vr::CaptureSetupMutex()
 {
 	DWORD waitResult;
 
-	if (gSetupMutex == NULL)
+	if (_setup_mutex == NULL)
 		CreateCaptureMutex();
 
-	LOG(DEBUG) << "-> CaptureSetupMutex mutex:" << gSetupMutex;
+	LOG(DEBUG) << "-> CaptureSetupMutex mutex:" << _setup_mutex;
 
-	waitResult = WaitForSingleObject(gSetupMutex, 1000);
+	waitResult = WaitForSingleObject(_setup_mutex, 1000);
 	if (waitResult != WAIT_OBJECT_0)
 	{
 		wchar_t info[512];
@@ -163,7 +163,7 @@ void vr::CaptureSetupMutex()
 		FatalExit(info, hr);
 	}
 
-	LOG(DEBUG) << "  WaitForSingleObject mutex: " << gSetupMutex << ", result: " << waitResult;
+	LOG(DEBUG) << "  WaitForSingleObject mutex: " << _setup_mutex << ", result: " << waitResult;
 }
 
 // Release use of shared mutex, so the VR side can grab the mutex, and thus know that
@@ -175,16 +175,16 @@ void vr::CaptureSetupMutex()
 
 void vr::ReleaseSetupMutex()
 {
-	LOG(DEBUG) << "<- ReleaseSetupMutex mutex:" << gSetupMutex;
+	LOG(DEBUG) << "<- ReleaseSetupMutex mutex:" << _setup_mutex;
 
-	BOOL ok = ReleaseMutex(gSetupMutex);
+	BOOL ok = ReleaseMutex(_setup_mutex);
 	if (!ok)
 	{
 		DWORD hr = GetLastError();
 		LOG(INFO) << "ReleaseSetupMutex: ReleaseMutex failed, err: 0x%x\n", hr;
 	}
 
-	LOG(DEBUG) << "  ReleaseSetupMutex mutex: " << gSetupMutex << ", result: " <<  (ok ? "OK" : "FAIL");
+	LOG(DEBUG) << "  ReleaseSetupMutex mutex: " << _setup_mutex << ", result: " <<  (ok ? "OK" : "FAIL");
 }
 
 // -----------------------------------------------------------------------------
@@ -195,16 +195,16 @@ void vr::ReleaseSetupMutex()
 
 void vr::DestroySharedTexture()
 {
-	LOG(INFO) << "vr:DX11 DestroySharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
+	LOG(INFO) << "vr:DX11 DestroySharedTexture called. _shared_texture: " << _shared_texture << " _game_sharedhandle: " << _game_sharedhandle << " _mapped_view: " << _mapped_view;
 
 	// Save possible prior usage to be disposed after we recreate.
-	ID3D11Texture2D* oldGameTexture = gGameTexture;
+	ID3D11Texture2D* oldGameTexture = _shared_texture;
 
 	// Tell Katanga it's gone, so it can drop its buffers.
-	gGameSharedHandle = NULL;
-	*(PUINT)(gMappedView) = PtrToUint(gGameSharedHandle);
+	_game_sharedhandle = NULL;
+	*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
 
-	LOG(INFO) << "  Release stale gGameTexture: " << oldGameTexture;
+	LOG(INFO) << "  Release stale _shared_texture: " << oldGameTexture;
 	if (oldGameTexture)
 		oldGameTexture->Release();
 }
@@ -214,7 +214,7 @@ void vr::DestroySharedTexture()
 // it ResizeBuffers is called, because we need to change our destination copy
 // to always match what the game is drawing.
 //
-// This will also rewrite the global gGameSharedHandle with a new HANDLE as
+// This will also rewrite the global _game_sharedhandle with a new HANDLE as
 // needed, and the Unity side is expected to notice a change and setup a new
 // drawing texture as well.  This is thus polling on the Unity side, which is
 // not ideal, but it is one call here to fetch the 4 byte HANDLE every 11ms.  
@@ -228,22 +228,22 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 	D3D11_TEXTURE2D_DESC desc = { 0 };
 	ID3D11Texture2D* oldGameTexture = nullptr;
 
-	LOG(INFO) << "vr:DX11 CreateSharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
+	LOG(INFO) << "vr:DX11 CreateSharedTexture called. _shared_texture: " << _shared_texture << " _game_sharedhandle: " << _game_sharedhandle << " _mapped_view: " << _mapped_view;
 
-	// When called back and gGameSharedHandle exists, we are thus recreating a new shared texture, probably
+	// When called back and _game_sharedhandle exists, we are thus recreating a new shared texture, probably
 	// as part of ResizeBuffers, but can be from Present because some games call ResizeBuffers 5 times before
 	// calling Present.  Upon desired recreation, we will immediately mark the old one as defunct, so that
 	// the Katanga side can switch to grey screen and stop any use of the old share. 
-	if (gGameSharedHandle != NULL)
+	if (_game_sharedhandle != NULL)
 	{
-		LOG(INFO) << "vr:CreateSharedTexture rebuild gGameSharedHandle. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle;
+		LOG(INFO) << "vr:CreateSharedTexture rebuild _game_sharedhandle. _shared_texture: " << _shared_texture << " _game_sharedhandle: " << _game_sharedhandle;
 
 		// Save possible prior usage to be disposed after we recreate.
-		oldGameTexture = gGameTexture;
+		oldGameTexture = _shared_texture;
 
 		// Tell Katanga it's gone, so it can drop its buffers.
-		gGameSharedHandle = NULL;
-		*(PUINT)(gMappedView) = PtrToUint(gGameSharedHandle);
+		_game_sharedhandle = NULL;
+		*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
 
 		return;
 	}
@@ -275,29 +275,29 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 													// But we never seem to see any contention between game and Katanga.
 	LOG(INFO) << "  Width: " << desc.Width << ", Height: " << desc.Height << ", Format: " << desc.Format;
 
-	oldGameTexture = gGameTexture;
-	gGameTexture = gameTexture;
+	oldGameTexture = _shared_texture;
+	_shared_texture = gameTexture;
 
-	LOG(INFO) << " pDevice create new gGameTexture: " << gGameTexture;
+	LOG(INFO) << " pDevice create new _shared_texture: " << _shared_texture;
 
 	// Now create the HANDLE which is used to share surfaces.  This follows the model from:
 	// https://docs.microsoft.com/en-us/windows/desktop/api/d3d11/nf-d3d11-id3d11device-opensharedresource
 
 	IDXGIResource* pDXGIResource = NULL;
 
-	hr = gGameTexture->QueryInterface(__uuidof(IDXGIResource), (LPVOID*)&pDXGIResource);
+	hr = _shared_texture->QueryInterface(__uuidof(IDXGIResource), (LPVOID*)&pDXGIResource);
 	if (FAILED(hr))	FatalExit(L"Fail to QueryInterface on shared surface", hr);
 	{
 		LOG(INFO) << " query new pDXGIResource: " << pDXGIResource;
 
-		hr = pDXGIResource->GetSharedHandle(&gGameSharedHandle);
-		if (FAILED(hr) || gGameSharedHandle == NULL) FatalExit(L"Fail to pDXGIResource->GetSharedHandle", hr);
+		hr = pDXGIResource->GetSharedHandle(&_game_sharedhandle);
+		if (FAILED(hr) || _game_sharedhandle == NULL) FatalExit(L"Fail to pDXGIResource->GetSharedHandle", hr);
 
-		LOG(INFO) << " GetSharedHandle new gGameSharedHandle: " << gGameSharedHandle;
+		LOG(INFO) << " GetSharedHandle new _game_sharedhandle: " << _game_sharedhandle;
 	}
 	pDXGIResource->Release();
 
-	LOG(INFO) << "  Successfully created new shared gGameTexture: " << gGameTexture << ", new shared gGameSharedHandle: " << gGameSharedHandle;
+	LOG(INFO) << "  Successfully created new shared _shared_texture: " << _shared_texture << ", new shared _game_sharedhandle: " << _game_sharedhandle;
 
 	// Move that shared handle into the MappedView to IPC the Handle to Katanga.
 	// The HANDLE is always 32 bit, even for 64 bit processes.
@@ -305,15 +305,15 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 	//
 	// This magic line of code will fire off the Katanga side rebuilding of it's drawing pipeline and surface.
 
-	*(PUINT)(gMappedView) = PtrToUint(gGameSharedHandle);
+	*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
 
-	LOG(INFO) << "  Successfully shared gMappedView: " << gMappedView << "->" << *(UINT*)(gMappedView);
+	LOG(INFO) << "  Successfully shared _mapped_view: " << _mapped_view << "->" << *(UINT*)(_mapped_view);
 
 	// If we already had created one, let the old one go.  We do it after the recreation
 	// here fills in the prior globals, to avoid possible dead structure usage in the
 	// Unity app.
 
-	LOG(INFO) << "  Release stale gGameTexture: " << oldGameTexture;
+	LOG(INFO) << "  Release stale _shared_texture: " << oldGameTexture;
 	if (oldGameTexture)
 		oldGameTexture->Release();
 }

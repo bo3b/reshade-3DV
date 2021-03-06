@@ -42,13 +42,13 @@ void vr_d3d12::CaptureVRFrame(ID3D12Resource* doubleTex)
 	ID3D11Device* pDevice = nullptr;
 	ID3D12GraphicsCommandList* pCmdList = nullptr;
 
-	// Create the shared texture at first Present, or whenever the gGameSharedHandle is
+	// Create the shared texture at first Present, or whenever the _game_sharedhandle is
 	// zeroed out as part of a ResizeBuffers.
-	//if (gGameSharedHandle == NULL)
+	//if (_game_sharedhandle == NULL)
 	//	CreateSharedTexture(doubleTex);
 
 	// Copy the current data from doubleTex texture into our shared texture every frame.
-	if (doubleTex != nullptr && gGameTexture != nullptr)
+	if (doubleTex != nullptr && _shared_texture != nullptr)
 	{
 //		doubleTex->GetDesc(&pDesc);
 //		doubleTex->GetDevice(&pDevice);
@@ -63,8 +63,8 @@ void vr_d3d12::CaptureVRFrame(ID3D12Resource* doubleTex)
 //			CD3DX12_TEXTURE_COPY_LOCATION source(pIntermediate, pLayouts[i]);
 //
 //			// SBS needs eye swap to match 3D Vision R/L cross-eyed format of Katanga
-//			pCmdList->CopyTextureRegion(gGameTexture, 0, 0, 0, doubleTex, &rightEye);
-//			pCmdList->CopyTextureRegion(gGameTexture, pDesc.Width / 2, 0, 0, doubleTex, &leftEye);
+//			pCmdList->CopyTextureRegion(_shared_texture, 0, 0, 0, doubleTex, &rightEye);
+//			pCmdList->CopyTextureRegion(_shared_texture, pDesc.Width / 2, 0, 0, doubleTex, &leftEye);
 		}
 //		ReleaseSetupMutex();
 
