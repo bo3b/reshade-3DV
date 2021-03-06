@@ -12,6 +12,7 @@
 #include "vr.hpp"
 
 #include "dll_log.hpp"
+#include "dxgi/format_utils.hpp"
 
 // -----------------------------------------------------------------------------
 
@@ -191,7 +192,8 @@ void vr::ReleaseSetupMutex()
 
 // When the DoubleTex is unloaded, our shared handle becomes invalid.  This can happen
 // if they turn off the effect, but also when the game calls ResizeBuffers.  It will
-// be rebuilt automatically when the CaptureVRFrame is next called.
+// be rebuilt automatically when the CaptureVRFrame is next called. Setting _game_sharedhandle
+// to null, tells the Katanga side to switch to grey screen and stop any use of the old share. 
 
 void vr::DestroySharedTexture()
 {
@@ -206,13 +208,17 @@ void vr::DestroySharedTexture()
 
 	LOG(INFO) << "  Release stale _shared_texture: " << oldGameTexture;
 	if (oldGameTexture)
+	{
 		oldGameTexture->Release();
+		_shared_texture = nullptr;
+	}
 }
 
 // Shared code for when we need to create the offscreen Texture2D for our stereo
 // copy.  This is created when the CreateSwapChain is called, and also whenever
 // it ResizeBuffers is called, because we need to change our destination copy
-// to always match what the game is drawing.
+// to always match what the game is drawing. Buffer width is already 2x game size,
+// as it comes from SuperDepth doubleTex.
 //
 // This will also rewrite the global _game_sharedhandle with a new HANDLE as
 // needed, and the Unity side is expected to notice a change and setup a new
@@ -222,37 +228,26 @@ void vr::DestroySharedTexture()
 // although using a TriggerEvent with some C# interop might work.  We'll only
 // do that work if this proves to be a problem.
 
-void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
+void vr::CreateSharedTexture(ID3D11Texture2D* gameDoubleTex)
 {
 	HRESULT hr;
 	D3D11_TEXTURE2D_DESC desc = { 0 };
-	ID3D11Texture2D* oldGameTexture = nullptr;
+	ID3D11Texture2D* oldGameTexture = _shared_texture;
+	ID3D11Device* pDevice = nullptr;
+	gameDoubleTex->GetDesc(&desc);
+	gameDoubleTex->GetDevice(&pDevice);
 
-	LOG(INFO) << "vr:DX11 CreateSharedTexture called. _shared_texture: " << _shared_texture << " _game_sharedhandle: " << _game_sharedhandle << " _mapped_view: " << _mapped_view;
+	LOG(INFO) << "vr::CreateSharedTexture called. _shared_texture: " << _shared_texture << " _game_sharedhandle: " << _game_sharedhandle << " _mapped_view: " << _mapped_view;
 
-	// When called back and _game_sharedhandle exists, we are thus recreating a new shared texture, probably
-	// as part of ResizeBuffers, but can be from Present because some games call ResizeBuffers 5 times before
-	// calling Present.  Upon desired recreation, we will immediately mark the old one as defunct, so that
-	// the Katanga side can switch to grey screen and stop any use of the old share. 
-	if (_game_sharedhandle != NULL)
-	{
-		LOG(INFO) << "vr:CreateSharedTexture rebuild _game_sharedhandle. _shared_texture: " << _shared_texture << " _game_sharedhandle: " << _game_sharedhandle;
-
-		// Save possible prior usage to be disposed after we recreate.
-		oldGameTexture = _shared_texture;
-
-		// Tell Katanga it's gone, so it can drop its buffers.
-		_game_sharedhandle = NULL;
-		*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
-
-		return;
-	}
-
-
-	// Now that we have a proper texture from the reshade copy, let's also make a 
-	// DX11 Texture2D exact copy, so that we can snapshot the game output.
-	// Buffer width is already 2x game size, as it comes from SuperDepth doubleTex.
-	gameTexture->GetDesc(&desc);
+	LOG(INFO) << "  | DoubleTex                               |                                         |";
+	LOG(INFO) << "  +-----------------------------------------+-----------------------------------------+";
+	LOG(INFO) << "  | Width                                   | " << std::setw(39) << desc.Width << " |";
+	LOG(INFO) << "  | Height                                  | " << std::setw(39) << desc.Height << " |";
+	if (const char *format_string = format_to_string(desc.Format); format_string != nullptr)
+		LOG(INFO) << "  | Format                                  | " << std::setw(39) << format_string << " |";
+	else
+		LOG(INFO) << "  | Format                                  | " << std::setw(39) << desc.Format << " |";
+	LOG(INFO) << "  +-----------------------------------------+-----------------------------------------+";
 
 	// Some games like TheSurge and Dishonored2 will specify a DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
 	// as their backbuffer.  This doesn't work for us because our output is going to the VR HMD,
@@ -267,33 +262,33 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 	if (desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
 		desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 
+	// Reshade makes all buffers TypeLess, but we need the actual game type when creating a
+	// shared surface.
+
+	desc.Format = make_dxgi_format_normal(desc.Format);
+
+	LOG(INFO) << "  | Final Format                            | " << std::setw(39) << format_to_string(desc.Format) << " |";
+
 	// This texture needs to use the Shared flag, so that we can share it to 
 	// another Device.  Because these are all DX11 objects, the share will work.
 
 	desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;	// Must add bind flag, so SRV can be created in Unity.
 	desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;	// To be shared. maybe D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is better
 													// But we never seem to see any contention between game and Katanga.
-	LOG(INFO) << "  Width: " << desc.Width << ", Height: " << desc.Height << ", Format: " << desc.Format;
-
-	oldGameTexture = _shared_texture;
-	_shared_texture = gameTexture;
-
-	LOG(INFO) << " pDevice create new _shared_texture: " << _shared_texture;
+	
+	hr = pDevice->CreateTexture2D(&desc, NULL, &_shared_texture);
+	if (FAILED(hr)) FatalExit(L"Fail to create shared stereo Texture", hr);
 
 	// Now create the HANDLE which is used to share surfaces.  This follows the model from:
 	// https://docs.microsoft.com/en-us/windows/desktop/api/d3d11/nf-d3d11-id3d11device-opensharedresource
 
 	IDXGIResource* pDXGIResource = NULL;
-
 	hr = _shared_texture->QueryInterface(__uuidof(IDXGIResource), (LPVOID*)&pDXGIResource);
-	if (FAILED(hr))	FatalExit(L"Fail to QueryInterface on shared surface", hr);
 	{
-		LOG(INFO) << " query new pDXGIResource: " << pDXGIResource;
+		if (FAILED(hr))	FatalExit(L"Fail to QueryInterface on shared surface", hr);
 
 		hr = pDXGIResource->GetSharedHandle(&_game_sharedhandle);
 		if (FAILED(hr) || _game_sharedhandle == NULL) FatalExit(L"Fail to pDXGIResource->GetSharedHandle", hr);
-
-		LOG(INFO) << " GetSharedHandle new _game_sharedhandle: " << _game_sharedhandle;
 	}
 	pDXGIResource->Release();
 
@@ -306,8 +301,6 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 	// This magic line of code will fire off the Katanga side rebuilding of it's drawing pipeline and surface.
 
 	*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
-
-	LOG(INFO) << "  Successfully shared _mapped_view: " << _mapped_view << "->" << *(UINT*)(_mapped_view);
 
 	// If we already had created one, let the old one go.  We do it after the recreation
 	// here fills in the prior globals, to avoid possible dead structure usage in the
