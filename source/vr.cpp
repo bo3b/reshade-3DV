@@ -230,12 +230,6 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 
 	LOG(INFO) << "vr:DX11 CreateSharedTexture called. gGameTexture: " << gGameTexture << " gGameSharedHandle: " << gGameSharedHandle << " gMappedView: " << gMappedView;
 
-	// At first Present or ResizeBuffer call, we'll build the file mapped IPC.  Could conceivably
-	// be done at 3Dmigoto startup.
-	if (gMappedView == nullptr)
-		CreateFileMappedIPC();
-
-
 	// When called back and gGameSharedHandle exists, we are thus recreating a new shared texture, probably
 	// as part of ResizeBuffers, but can be from Present because some games call ResizeBuffers 5 times before
 	// calling Present.  Upon desired recreation, we will immediately mark the old one as defunct, so that
@@ -323,6 +317,3 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 	if (oldGameTexture)
 		oldGameTexture->Release();
 }
-
-
-

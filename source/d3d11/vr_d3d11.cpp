@@ -22,9 +22,11 @@
 vr_d3d11::vr_d3d11(IDXGISwapChain* swapchain)
 {
 	_swapchain = swapchain;
+	CreateFileMappedIPC();
 }
 vr_d3d11::~vr_d3d11()
 {
+	ReleaseFileMappedIPC();
 }
 
 // -----------------------------------------------------------------------------
