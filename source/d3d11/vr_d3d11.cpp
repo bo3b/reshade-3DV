@@ -34,7 +34,8 @@ vr_d3d11::~vr_d3d11()
 
 // Capture the double width texture and transfer the data across the MappedFileIPC to the VR app.
 // We do the initialization check here at every frame so we can use a late-binding 
-// approach for the sharing of the data, which is more reliable.
+// approach for the sharing of the data, which is more reliable.  This is called for every
+// Present call.
 
 void vr_d3d11::CaptureVRFrame(ID3D11Texture2D* doubleTex)
 {
@@ -42,26 +43,18 @@ void vr_d3d11::CaptureVRFrame(ID3D11Texture2D* doubleTex)
 	ID3D11Device* pDevice = nullptr;
 	ID3D11DeviceContext* pContext = nullptr;
 
-	if (doubleTex == nullptr)
-		return;
-
-	doubleTex->GetDesc(&pDesc);
-	doubleTex->GetDevice(&pDevice);
-	pDevice->GetImmediateContext(&pContext);
-
 	// Create the shared texture at first Present, or whenever the gGameSharedHandle is
 	// zeroed out as part of a ResizeBuffers.
 	if (gGameSharedHandle == NULL)
-	{
-		HRESULT hr = pDevice->CreateTexture2D(&pDesc, NULL, &gGameTexture);
-		if (FAILED(hr)) FatalExit(L"Fail to create shared stereo Texture", hr);
+		CreateSharedTexture(doubleTex);
 
-		CreateSharedTexture(gGameTexture);
-	}
-
-	// Copy the current data from doubleTex texture into our shared texture every frame.
+	// Copy the current frame data from doubleTex texture into our shared texture.
 	if (doubleTex != nullptr && gGameTexture != nullptr)
 	{
+		doubleTex->GetDesc(&pDesc);
+		doubleTex->GetDevice(&pDevice);
+		pDevice->GetImmediateContext(&pContext);
+
 //		CaptureSetupMutex();
 		{
 			D3D11_BOX rightEye = { pDesc.Width / 2, 0, 0, pDesc.Width, pDesc.Height, 1 };
