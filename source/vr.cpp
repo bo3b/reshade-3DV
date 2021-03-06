@@ -63,6 +63,8 @@ void vr::FatalExit(LPCWSTR errorString, HRESULT code)
 
 	LOG(ERROR) << " Fatal Error: " << errorString << " code: " << code;
 
+	swprintf_s(info, 512, L"Report: %s\n\nError: %x", errorString, code);
+
 	MessageBox(NULL, info, L"GamePlugin: Fatal Error", MB_OK);
 	DoubleBeepExit();
 }
