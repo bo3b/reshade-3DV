@@ -322,20 +322,5 @@ void vr::CreateSharedTexture(ID3D11Texture2D* gameTexture)
 		oldGameTexture->Release();
 }
 
-// -----------------------------------------------------------------------------
-
-// Move the image halfway, so that we can see half of each eye on the main view.
-// This is just a hack way to be sure we are getting stereo output in debug builds.
-
-#ifdef _DEBUG
-void DrawStereoOnGame(ID3D11DeviceContext* pContext, ID3D11Texture2D* surface, ID3D11Texture2D* back,
-	UINT width, UINT height)
-{
-	D3D11_BOX srcBox = { width / 2, 0, 0, width + width / 2, height, 1 };
-	pContext->CopySubresourceRegion(back, 0, 0, 0, 0, surface, 0, &srcBox);
-}
-#endif
-
-
 
 

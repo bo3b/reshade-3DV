@@ -63,10 +63,6 @@ void vr_d3d12::CaptureVRFrame(ID3D12Resource* doubleTex)
 //			// SBS needs eye swap to match 3D Vision R/L cross-eyed format of Katanga
 //			pCmdList->CopyTextureRegion(gGameTexture, 0, 0, 0, doubleTex, &rightEye);
 //			pCmdList->CopyTextureRegion(gGameTexture, pDesc.Width / 2, 0, 0, doubleTex, &leftEye);
-
-#ifdef _DEBUG
-			DrawStereoOnGame(pCmdList, gGameTexture, doubleTex, pDesc.Width, pDesc.Height);
-#endif
 		}
 //		ReleaseSetupMutex();
 

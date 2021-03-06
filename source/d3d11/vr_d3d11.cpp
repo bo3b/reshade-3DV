@@ -71,10 +71,6 @@ void vr_d3d11::CaptureVRFrame(ID3D11Texture2D* doubleTex)
 		}
 //		ReleaseSetupMutex();
 
-
-#ifdef _DEBUG
-		DrawStereoOnGame(pContext, gGameTexture, doubleTex, pDesc.Width, pDesc.Height);
-#endif
 		pContext->Release();
 		pDevice->Release();
 	}
