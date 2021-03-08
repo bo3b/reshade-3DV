@@ -8,6 +8,8 @@
 #include "d3d11_device.hpp"
 #include "d3d11_device_context.hpp"
 
+#include "vr.hpp"
+
 extern thread_local bool g_in_dxgi_runtime;
 
 HOOK_EXPORT HRESULT WINAPI D3D11CreateDevice(IDXGIAdapter *pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL *pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, ID3D11Device **ppDevice, D3D_FEATURE_LEVEL *pFeatureLevel, ID3D11DeviceContext **ppImmediateContext)
@@ -142,8 +144,6 @@ HOOK_EXPORT HRESULT WINAPI D3D11CreateDeviceAndSwapChain(IDXGIAdapter *pAdapter,
 			LOG(INFO) << "Returning ID3D11Device0 object " << device_proxy << " and IDXGIDevice1 object " << device_proxy->_dxgi_device << '.';
 #endif
 			*ppDevice = device_proxy;
-
-			NvCreateStereoHandle(device_proxy);
 		}
 
 		if (ppImmediateContext != nullptr)

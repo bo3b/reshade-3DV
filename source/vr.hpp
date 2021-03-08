@@ -4,6 +4,9 @@
 #include <d3d11_1.h>
 
 #include "runtime.hpp"
+#include "d3d11/nvapi/nvapi_lite_stereo.h"
+
+void Nv3DDirectSetup();
 
 class vr
 {
