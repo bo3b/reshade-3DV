@@ -932,6 +932,18 @@ bool reshade::d3d11::runtime_d3d11::init_texture(texture &texture)
 		break;
 	}
 
+	// If we are creating our stereo texture, we need to ensure that it matches the format
+	// of the backbuffer, instead of the reshade defaults.  Otherwise, our CopySubResourceRegion
+	// calls will fail for some games that use unusual formats.
+	if (texture.unique_name == "V__DoubleTex")
+	{
+		desc.Format = _backbuffer_format;
+		if (const char *format_string = format_to_string(_backbuffer_format); format_string != nullptr)
+			LOG(INFO) << "Forced V__DoubleTex to BackBuffer format: " << format_to_string(_backbuffer_format);
+		else
+			LOG(INFO) << "Forced V__DoubleTex to BackBuffer format: " << _backbuffer_format;
+	}
+
 	// Clear texture to zero since by default its contents are undefined
 	std::vector<uint8_t> zero_data(desc.Width * desc.Height * 16);
 	std::vector<D3D11_SUBRESOURCE_DATA> initial_data(desc.MipLevels);
