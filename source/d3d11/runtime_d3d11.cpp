@@ -1051,9 +1051,7 @@ void reshade::d3d11::runtime_d3d11::upload_texture(const texture &texture, const
 void reshade::d3d11::runtime_d3d11::destroy_texture(texture &texture)
 {
 	// Tell VR side whenever our doubleTex is destroyed, so we don't keep using it.
-	const auto it = std::find_if(_textures.begin(), _textures.end(),
-		[](const auto &item) { return item.unique_name == "V__DoubleTex" && item.impl != nullptr; });
-	if (it != _textures.end())
+	if (texture.unique_name == "V__DoubleTex")
 		_vr->DestroySharedTexture();	
 
 	delete static_cast<tex_data *>(texture.impl);
