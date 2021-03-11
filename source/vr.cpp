@@ -194,6 +194,9 @@ void vr::ReleaseSetupMutex()
 // if they turn off the effect, but also when the game calls ResizeBuffers.  It will
 // be rebuilt automatically when the CaptureVRFrame is next called. Setting _game_sharedhandle
 // to null, tells the Katanga side to switch to grey screen and stop any use of the old share. 
+//
+// _game_sharedhandle cannot be be properly disposed because it's not a real handle. More
+// Microsoft genius APIs.
 
 void vr::DestroySharedTexture()
 {
@@ -206,9 +209,10 @@ void vr::DestroySharedTexture()
 	_game_sharedhandle = NULL;
 	*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
 
-	LOG(INFO) << "  Release stale _shared_texture: " << oldGameTexture;
 	if (oldGameTexture)
 	{
+		LOG(INFO) << "  Release stale _shared_texture: " << oldGameTexture;
+
 		oldGameTexture->Release();
 		_shared_texture = nullptr;
 	}
