@@ -218,16 +218,20 @@ void reshade::runtime::on_present()
 		_preset_save_success = false;
 
 	// Detect high network traffic
-	static int cooldown = 0, traffic = 0;
-	if (cooldown-- > 0)
+	// Can be disabled by manually editing the .ini file.
+	if (_network_check_active)
 	{
-		traffic += g_network_traffic > 0;
-	}
-	else
-	{
-		_has_high_network_activity = traffic > 10;
-		traffic = 0;
-		cooldown = 60;
+		static int cooldown = 0, traffic = 0;
+		if (cooldown-- > 0)
+		{
+			traffic += g_network_traffic > 0;
+		}
+		else
+		{
+			_has_high_network_activity = traffic > 10;
+			traffic = 0;
+			cooldown = 60;
+		}
 	}
 
 	// Reset frame statistics
@@ -1452,6 +1456,12 @@ void reshade::runtime::load_config()
 	config.get("SCREENSHOT", "SaveOverlayShot", _screenshot_save_ui);
 	config.get("SCREENSHOT", "SavePath", _screenshot_path);
 	config.get("SCREENSHOT", "SavePresetFile", _screenshot_include_preset);
+
+	// Manually set flag can disable network check.  Requires direct ini editing
+	// so that there is no confusion on who bears responsibility for any bans.
+	config.get("DEPTH", "NetworkCheck", _network_check_active);
+	if (!_network_check_active)
+		LOG(INFO) << "Network check is disabled!";
 
 	for (const auto &callback : _load_config_callables)
 		callback(config);
