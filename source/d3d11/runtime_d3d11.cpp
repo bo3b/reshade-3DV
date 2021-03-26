@@ -308,11 +308,9 @@ void reshade::d3d11::runtime_d3d11::on_present()
 	runtime::on_present();
 
 	// For VR use, if the DoubleTex exists, we want to update from that texture now that it has been rendered by the effect.
-	const auto it = std::find_if(_textures.begin(), _textures.end(),
-		[](const auto &item) { return item.unique_name == "V__DoubleTex" && item.impl != nullptr;} );
-	if (it != _textures.end())
+	if (_doubletex)
 	{
-		const auto tex_impl = static_cast<tex_data *>((*it).impl);
+		const auto tex_impl = static_cast<tex_data *>(_doubletex->impl);
 		_vr->CaptureVRFrame(tex_impl->texture.get());
 	}
 
@@ -937,6 +935,8 @@ bool reshade::d3d11::runtime_d3d11::init_texture(texture &texture)
 	// calls will fail for some games that use unusual formats.
 	if (texture.unique_name == "V__DoubleTex")
 	{
+		_doubletex = &texture;
+
 		if (const char *format_string = format_to_string(desc.Format); format_string != nullptr)
 			LOG(INFO) << "Original texture format for DoubleTex: " << format_to_string(desc.Format);
 		else
@@ -1058,7 +1058,10 @@ void reshade::d3d11::runtime_d3d11::destroy_texture(texture &texture)
 {
 	// Tell VR side whenever our doubleTex is destroyed, so we don't keep using it.
 	if (texture.unique_name == "V__DoubleTex")
-		_vr->DestroySharedTexture();	
+	{
+		_vr->DestroySharedTexture();
+		_doubletex = nullptr;
+	}
 
 	delete static_cast<tex_data *>(texture.impl);
 	texture.impl = nullptr;

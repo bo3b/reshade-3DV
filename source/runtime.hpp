@@ -252,6 +252,8 @@ namespace reshade
 		std::vector<texture> _textures;
 		std::vector<technique> _techniques;
 
+		texture *_doubletex = nullptr;
+
 	private:
 		/// <summary>
 		/// Compare current version against the latest published one.
