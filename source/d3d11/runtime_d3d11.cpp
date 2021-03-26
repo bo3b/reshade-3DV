@@ -358,9 +358,13 @@ bool reshade::d3d11::runtime_d3d11::capture_screenshot(uint8_t *buffer) const
 		return false;
 	}
 
+	// If we are running in stereo mode, as indicated by the presence of the DoubleTex
+	// texture, let's also generate a stereo screenshot.
+	auto tex_width = _doubletex ? _width * 2: _width;
+
 	// Create a texture in system memory, copy back buffer data into it and map it for reading
 	D3D11_TEXTURE2D_DESC desc = {};
-	desc.Width = _width;
+	desc.Width = tex_width;
 	desc.Height = _height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
@@ -378,14 +382,28 @@ bool reshade::d3d11::runtime_d3d11::capture_screenshot(uint8_t *buffer) const
 	}
 	set_debug_name(intermediate.get(), L"ReShade screenshot texture");
 
-	_immediate_context->CopyResource(intermediate.get(), _backbuffer_resolved.get());
+	if (_doubletex)
+	{
+		const auto stereo_tex = static_cast<tex_data *>(_doubletex->impl);
+
+		D3D11_BOX rightEye = { tex_width / 2, 0, 0, tex_width, _height, 1 };
+		D3D11_BOX leftEye = { 0, 0, 0, tex_width / 2, _height, 1 };
+
+		// SBS needs eye swap to match 3D Vision R/L cross-eyed format of normal 3D Vision jps shots
+		_immediate_context->CopySubresourceRegion(intermediate.get(), 0, 0, 0, 0, stereo_tex->texture.get(), 0, &rightEye);
+		_immediate_context->CopySubresourceRegion(intermediate.get(), 0, tex_width / 2, 0, 0, stereo_tex->texture.get(), 0, &leftEye);
+	}
+	else
+	{
+		_immediate_context->CopyResource(intermediate.get(), _backbuffer_resolved.get());
+	}
 
 	D3D11_MAPPED_SUBRESOURCE mapped;
 	if (FAILED(_immediate_context->Map(intermediate.get(), 0, D3D11_MAP_READ, 0, &mapped)))
 		return false;
 	auto mapped_data = static_cast<const uint8_t *>(mapped.pData);
 
-	for (uint32_t y = 0, pitch = _width * 4; y < _height; y++, buffer += pitch, mapped_data += mapped.RowPitch)
+	for (uint32_t y = 0, pitch = tex_width * 4; y < _height; y++, buffer += pitch, mapped_data += mapped.RowPitch)
 	{
 		if (_color_bit_depth == 10)
 		{

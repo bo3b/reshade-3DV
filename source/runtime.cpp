@@ -1797,7 +1797,10 @@ void reshade::runtime::save_screenshot(const std::wstring &postfix, const bool s
 		filename += L' ' + _current_preset_path.stem().wstring();
 
 	filename += postfix;
-	filename += _screenshot_format == 0 ? L".bmp" : _screenshot_format == 1 ? L".png" : L".jpg";
+	if (_doubletex)
+		filename += _screenshot_format == 0 ? L".bmp" : _screenshot_format == 1 ? L".pns" : L".jps";
+	else
+		filename += _screenshot_format == 0 ? L".bmp" : _screenshot_format == 1 ? L".png" : L".jpg";
 
 	std::filesystem::path screenshot_path = g_reshade_base_path / _screenshot_path / filename;
 
@@ -1805,14 +1808,18 @@ void reshade::runtime::save_screenshot(const std::wstring &postfix, const bool s
 
 	_screenshot_save_success = false; // Default to a save failure unless it is reported to succeed below
 
-	if (std::vector<uint8_t> data(_width * _height * 4); capture_screenshot(data.data()))
+	// If the V__DoubleTex texture exists, we are running in stereo mode, and want to make
+	// a 2x width stereo screenshot instead.
+	auto tex_width = _doubletex ? _width * 2: _width;
+
+	if (std::vector<uint8_t> data(tex_width * _height * 4); capture_screenshot(data.data()))
 	{
 		// Clear alpha channel
 		// The alpha channel doesn't need to be cleared if we're saving a JPEG, stbi ignores it
 		if (_screenshot_clear_alpha && _screenshot_format != 2)
 			for (uint32_t h = 0; h < _height; ++h)
-				for (uint32_t w = 0; w < _width; ++w)
-					data[(h * _width + w) * 4 + 3] = 0xFF;
+				for (uint32_t w = 0; w < tex_width; ++w)
+					data[(h * tex_width + w) * 4 + 3] = 0xFF;
 
 		if (FILE *file; _wfopen_s(&file, screenshot_path.c_str(), L"wb") == 0)
 		{
@@ -1823,13 +1830,13 @@ void reshade::runtime::save_screenshot(const std::wstring &postfix, const bool s
 			switch (_screenshot_format)
 			{
 			case 0:
-				_screenshot_save_success = stbi_write_bmp_to_func(write_callback, file, _width, _height, 4, data.data()) != 0;
+				_screenshot_save_success = stbi_write_bmp_to_func(write_callback, file, tex_width, _height, 4, data.data()) != 0;
 				break;
 			case 1:
-				_screenshot_save_success = stbi_write_png_to_func(write_callback, file, _width, _height, 4, data.data(), 0) != 0;
+				_screenshot_save_success = stbi_write_png_to_func(write_callback, file, tex_width, _height, 4, data.data(), 0) != 0;
 				break;
 			case 2:
-				_screenshot_save_success = stbi_write_jpg_to_func(write_callback, file, _width, _height, 4, data.data(), _screenshot_jpeg_quality) != 0;
+				_screenshot_save_success = stbi_write_jpg_to_func(write_callback, file, tex_width, _height, 4, data.data(), _screenshot_jpeg_quality) != 0;
 				break;
 			}
 
