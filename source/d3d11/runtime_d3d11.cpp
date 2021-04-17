@@ -307,13 +307,6 @@ void reshade::d3d11::runtime_d3d11::on_present()
 	update_and_render_effects();
 	runtime::on_present();
 
-	// For VR use, if the DoubleTex exists, we want to update from that texture now that it has been rendered by the effect.
-	if (_doubletex)
-	{
-		const auto tex_impl = static_cast<tex_data *>(_doubletex->impl);
-		_vr->CaptureVRFrame(tex_impl->texture.get());
-	}
-
 	// Stretch main render target back into MSAA back buffer if MSAA is active
 	if (_backbuffer_resolved != _backbuffer)
 	{
@@ -341,6 +334,14 @@ void reshade::d3d11::runtime_d3d11::on_present()
 		_immediate_context->OMSetRenderTargets(ARRAYSIZE(render_targets), render_targets, nullptr);
 
 		_immediate_context->Draw(3, 0);
+	}
+
+	// For VR use, if the DoubleTex exists, we want to update from that texture now that it has been rendered by the effect.
+	// We are doing this late, to avoid the Reshade copy into backbuffer that breaks the 3D Vision Direct output.
+	if (_doubletex)
+	{
+		const auto tex_impl = static_cast<tex_data *>(_doubletex->impl);
+		_vr->CaptureVRFrame(tex_impl->texture.get());
 	}
 
 	// Apply previous state from application
