@@ -63,6 +63,7 @@ namespace reshade::d3d11
 
 #if RESHADE_GUI
 		bool init_imgui_resources();
+		void DrawUI(ImDrawData * draw_data, bool scissor);
 		void render_imgui_draw_data(ImDrawData *data) override;
 
 		struct imgui_resources

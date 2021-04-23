@@ -1374,6 +1374,40 @@ bool reshade::d3d11::runtime_d3d11::init_imgui_resources()
 	return true;
 }
 
+void reshade::d3d11::runtime_d3d11::DrawUI(ImDrawData * draw_data, bool scissor)
+{
+	UINT vtx_offset = 0, idx_offset = 0;
+	for (int n = 0; n < draw_data->CmdListsCount; ++n)
+	{
+		const ImDrawList *const draw_list = draw_data->CmdLists[n];
+
+		for (const ImDrawCmd &cmd : draw_list->CmdBuffer)
+		{
+			assert(cmd.TextureId != 0);
+			assert(cmd.UserCallback == nullptr);
+
+			if (scissor)
+			{
+				const D3D11_RECT scissor_rect = {
+					static_cast<LONG>(cmd.ClipRect.x),
+					static_cast<LONG>(cmd.ClipRect.y),
+					static_cast<LONG>(cmd.ClipRect.z),
+					static_cast<LONG>(cmd.ClipRect.w)
+				};
+				_immediate_context->RSSetScissorRects(1, &scissor_rect);
+			}
+			ID3D11ShaderResourceView *const texture_view =
+				static_cast<const tex_data *>(cmd.TextureId)->srv[0].get();
+			_immediate_context->PSSetShaderResources(0, 1, &texture_view);
+
+			_immediate_context->DrawIndexed(cmd.ElemCount, cmd.IdxOffset + idx_offset, cmd.VtxOffset + vtx_offset);
+		}
+
+		idx_offset += draw_list->IdxBuffer.Size;
+		vtx_offset += draw_list->VtxBuffer.Size;
+	}
+}
+
 void reshade::d3d11::runtime_d3d11::render_imgui_draw_data(ImDrawData *draw_data)
 {
 	// Projection matrix resides in an immutable constant buffer, so cannot change display dimensions
@@ -1464,33 +1498,26 @@ void reshade::d3d11::runtime_d3d11::render_imgui_draw_data(ImDrawData *draw_data
 	ID3D11RenderTargetView *const render_targets[] = { _backbuffer_rtv[0].get() };
 	_immediate_context->OMSetRenderTargets(ARRAYSIZE(render_targets), render_targets, nullptr);
 
-	UINT vtx_offset = 0, idx_offset = 0;
-	for (int n = 0; n < draw_data->CmdListsCount; ++n)
+	// Draw normally onto backbuffer.
+	DrawUI(draw_data, true);
+
+	// Repeat the drawing twice more for each eye of the DoubleTex texture, when it's active.
+	// We need to disable the scissor clipping to see the second eye.
+	const tex_data *tex_impl = _doubletex ? static_cast<tex_data*>(_doubletex->impl) : nullptr;
+	if (tex_impl)
 	{
-		const ImDrawList *const draw_list = draw_data->CmdLists[n];
+		ID3D11RenderTargetView *const doubletex_targets[] = { tex_impl->rtv[0].get() };
+		_immediate_context->OMSetRenderTargets(ARRAYSIZE(doubletex_targets), doubletex_targets, nullptr);
+		RECT no_scissor = {0, 0, _width * 2, _height};
+		_immediate_context->RSSetScissorRects(1, &no_scissor);
 
-		for (const ImDrawCmd &cmd : draw_list->CmdBuffer)
-		{
-			assert(cmd.TextureId != 0);
-			assert(cmd.UserCallback == nullptr);
+		const D3D11_VIEWPORT left = { 0.0f, 0.0f, static_cast<FLOAT>(_width), static_cast<FLOAT>(_height), 0.0f, 1.0f };
+		_immediate_context->RSSetViewports(1, &left);
+		DrawUI(draw_data, false);
 
-			const D3D11_RECT scissor_rect = {
-				static_cast<LONG>(cmd.ClipRect.x),
-				static_cast<LONG>(cmd.ClipRect.y),
-				static_cast<LONG>(cmd.ClipRect.z),
-				static_cast<LONG>(cmd.ClipRect.w)
-			};
-			_immediate_context->RSSetScissorRects(1, &scissor_rect);
-
-			ID3D11ShaderResourceView *const texture_view =
-				static_cast<const tex_data *>(cmd.TextureId)->srv[0].get();
-			_immediate_context->PSSetShaderResources(0, 1, &texture_view);
-
-			_immediate_context->DrawIndexed(cmd.ElemCount, cmd.IdxOffset + idx_offset, cmd.VtxOffset + vtx_offset);
-		}
-
-		idx_offset += draw_list->IdxBuffer.Size;
-		vtx_offset += draw_list->VtxBuffer.Size;
+		const D3D11_VIEWPORT right = { static_cast<FLOAT>(_width), 0.0f, static_cast<FLOAT>(_width), static_cast<FLOAT>(_height), 0.0f, 1.0f };
+		_immediate_context->RSSetViewports(1, &right);
+		DrawUI(draw_data, false);
 	}
 }
 #endif
