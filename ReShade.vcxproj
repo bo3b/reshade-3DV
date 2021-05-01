@@ -385,8 +385,8 @@ copy /y "$(TargetDir)reshade64.pdb" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64
       <Command>powershell -ExecutionPolicy Bypass -File tools\verbuild.ps1 res\version.h -config "$(Configuration)" -platform "$(Platform)"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /y /f /c  "$(TargetDir)reshade64.dll" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64\dxgi.dll"
-</Command>
+      <Command>robocopy /S "$(SolutionDir)setup\config" "$(TargetDir)Zip"
+copy "$(TargetDir)reshade64.dll" "$(TargetDir)Zip\dxgi.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release App|Win32'">
