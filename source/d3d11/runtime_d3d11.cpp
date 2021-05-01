@@ -1508,7 +1508,7 @@ void reshade::d3d11::runtime_d3d11::render_imgui_draw_data(ImDrawData *draw_data
 	{
 		ID3D11RenderTargetView *const doubletex_targets[] = { tex_impl->rtv[0].get() };
 		_immediate_context->OMSetRenderTargets(ARRAYSIZE(doubletex_targets), doubletex_targets, nullptr);
-		RECT no_scissor = {0, 0, _width * 2, _height};
+		RECT no_scissor = { 0, 0, static_cast<LONG>(_width * 2), static_cast<LONG>(_height) };
 		_immediate_context->RSSetScissorRects(1, &no_scissor);
 
 		const D3D11_VIEWPORT left = { 0.0f, 0.0f, static_cast<FLOAT>(_width), static_cast<FLOAT>(_height), 0.0f, 1.0f };
