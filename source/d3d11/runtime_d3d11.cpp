@@ -338,9 +338,9 @@ void reshade::d3d11::runtime_d3d11::on_present()
 
 	// For VR use, if the DoubleTex exists, we want to update from that texture now that it has been rendered by the effect.
 	// We are doing this late, to avoid the Reshade copy into backbuffer that breaks the 3D Vision Direct output.
-	if (_doubletex)
+	const tex_data *tex_impl = _doubletex ? static_cast<tex_data*>(_doubletex->impl) : nullptr;
+	if (tex_impl)
 	{
-		const auto tex_impl = static_cast<tex_data *>(_doubletex->impl);
 		_vr->CaptureVRFrame(tex_impl->texture.get());
 	}
 
@@ -361,7 +361,8 @@ bool reshade::d3d11::runtime_d3d11::capture_screenshot(uint8_t *buffer) const
 
 	// If we are running in stereo mode, as indicated by the presence of the DoubleTex
 	// texture, let's also generate a stereo screenshot.
-	auto tex_width = _doubletex ? _width * 2: _width;
+	const tex_data *tex_impl = _doubletex ? static_cast<tex_data*>(_doubletex->impl) : nullptr;
+	auto tex_width = tex_impl ? _width * 2: _width;
 
 	// Create a texture in system memory, copy back buffer data into it and map it for reading
 	D3D11_TEXTURE2D_DESC desc = {};
@@ -383,16 +384,14 @@ bool reshade::d3d11::runtime_d3d11::capture_screenshot(uint8_t *buffer) const
 	}
 	set_debug_name(intermediate.get(), L"ReShade screenshot texture");
 
-	if (_doubletex)
+	if (tex_impl)
 	{
-		const auto stereo_tex = static_cast<tex_data *>(_doubletex->impl);
-
 		D3D11_BOX rightEye = { tex_width / 2, 0, 0, tex_width, _height, 1 };
 		D3D11_BOX leftEye = { 0, 0, 0, tex_width / 2, _height, 1 };
 
 		// SBS needs eye swap to match 3D Vision R/L cross-eyed format of normal 3D Vision jps shots
-		_immediate_context->CopySubresourceRegion(intermediate.get(), 0, 0, 0, 0, stereo_tex->texture.get(), 0, &rightEye);
-		_immediate_context->CopySubresourceRegion(intermediate.get(), 0, tex_width / 2, 0, 0, stereo_tex->texture.get(), 0, &leftEye);
+		_immediate_context->CopySubresourceRegion(intermediate.get(), 0, 0, 0, 0, tex_impl->texture.get(), 0, &rightEye);
+		_immediate_context->CopySubresourceRegion(intermediate.get(), 0, tex_width / 2, 0, 0, tex_impl->texture.get(), 0, &leftEye);
 	}
 	else
 	{
