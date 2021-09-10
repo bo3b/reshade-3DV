@@ -102,7 +102,7 @@ vr_d3d11::~vr_d3d11()
 
 void vr_d3d11::CaptureVRFrame(ID3D11Texture2D* doubleTex)
 {
-	D3D11_TEXTURE2D_DESC pDesc;
+	D3D11_TEXTURE2D_DESC desc;
 	ID3D11Device* pDevice = nullptr;
 	ID3D11DeviceContext* pContext = nullptr;
 	ID3D11Texture2D* backBuffer = nullptr;
@@ -117,16 +117,16 @@ void vr_d3d11::CaptureVRFrame(ID3D11Texture2D* doubleTex)
 	// Copy the current frame data from doubleTex texture into our shared texture.
 	if (doubleTex != nullptr && _shared_texture != nullptr)
 	{
-		doubleTex->GetDesc(&pDesc);
+		doubleTex->GetDesc(&desc);
 		doubleTex->GetDevice(&pDevice);
 		pDevice->GetImmediateContext(&pContext);
 		{
-			D3D11_BOX rightEye = { pDesc.Width / 2, 0, 0, pDesc.Width, pDesc.Height, 1 };
-			D3D11_BOX leftEye = { 0, 0, 0, pDesc.Width / 2, pDesc.Height, 1 };
+			D3D11_BOX rightEye = { desc.Width / 2, 0, 0, desc.Width, desc.Height, 1 };
+			D3D11_BOX leftEye = { 0, 0, 0, desc.Width / 2, desc.Height, 1 };
 
 			// SBS needs eye swap to match 3D Vision R/L cross-eyed format of Katanga
 			pContext->CopySubresourceRegion(_shared_texture, 0, 0, 0, 0, doubleTex, 0, &rightEye);
-			pContext->CopySubresourceRegion(_shared_texture, 0, pDesc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
+			pContext->CopySubresourceRegion(_shared_texture, 0, desc.Width / 2, 0, 0, doubleTex, 0, &leftEye);
 
 			// Only do the 3D Vision part if 3D Vision was successfully enabled, indicated by
 			// a valid _stereohandle.
