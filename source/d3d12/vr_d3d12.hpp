@@ -12,7 +12,8 @@ public:
 	vr_d3d12(IDXGISwapChain3 *swapchain);
 	~vr_d3d12();
 
-	void CaptureVRFrame(ID3D12Resource* doubleTex);
+	void CreateSharedTexture(IUnknown * gameDoubleTex);
+	void CaptureVRFrame(ID3D12Resource* pDoubleTex, ID3D12GraphicsCommandList* pCmdList);
 
 private:
 	IDXGISwapChain3 *_swapchain;

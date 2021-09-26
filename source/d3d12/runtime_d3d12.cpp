@@ -419,6 +419,15 @@ void reshade::d3d12::runtime_d3d12::on_present()
 
 	transition_state(_cmd_list, _backbuffers[_swap_index], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
+	// For VR use, if the DoubleTex exists, we want to update from that texture now that it has been rendered by the effect.
+	// We are doing this late, to avoid the Reshade copy into backbuffer that breaks the 3D Vision Direct output.
+	// We are just adding our commands to the reshade cmd_list, to copy after it is done.
+	const tex_data *tex_impl = _doubletex ? static_cast<tex_data*>(_doubletex->impl) : nullptr;
+	if (tex_impl)
+	{
+		_vr->CaptureVRFrame(tex_impl->resource.get(), _cmd_list.get());
+	}
+
 	execute_command_list();
 
 	if (const UINT64 sync_value = _fence_value[_swap_index] + 1;
