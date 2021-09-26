@@ -1193,6 +1193,26 @@ bool reshade::d3d12::runtime_d3d12::init_texture(texture &texture)
 		break;
 	}
 
+	// If we are creating our stereo texture, we need to ensure that it matches the format
+	// of the backbuffer, instead of the reshade defaults.  Otherwise, our CopySubResourceRegion
+	// calls will fail for some games that use unusual formats.
+	if (texture.unique_name == "V__DoubleTex")
+	{
+		_doubletex = &texture;
+
+		if (const char *format_string = format_to_string(desc.Format); format_string != nullptr)
+			LOG(INFO) << "Original texture format for DoubleTex: " << format_to_string(desc.Format);
+		else
+			LOG(INFO) << "Original texture format for DoubleTex: " << (desc.Format);
+
+		desc.Format = make_dxgi_format_typeless(_backbuffer_format);
+
+		if (const char *format_string = format_to_string(_backbuffer_format); format_string != nullptr)
+			LOG(INFO) << "> Forced V__DoubleTex to TypeLess BackBuffer format: " << format_to_string(_backbuffer_format);
+		else
+			LOG(INFO) << "> Forced V__DoubleTex to TypeLess BackBuffer format: " << _backbuffer_format;
+	}
+
 	// Render targets are always either cleared to zero or not cleared at all (see 'ClearRenderTargets' pass state), so can set the optimized clear value here to zero
 	D3D12_CLEAR_VALUE clear_value = {};
 	clear_value.Format = make_dxgi_format_normal(desc.Format);
@@ -1333,6 +1353,13 @@ void reshade::d3d12::runtime_d3d12::upload_texture(const texture &texture, const
 }
 void reshade::d3d12::runtime_d3d12::destroy_texture(texture &texture)
 {
+	// Tell VR side whenever our doubleTex is destroyed, so we don't keep using it.
+	if (texture.unique_name == "V__DoubleTex")
+	{
+		_vr->DestroySharedTexture();
+		_doubletex = nullptr;
+	}
+
 	// Make sure texture is not still in use before destroying it
 	wait_for_command_queue();
 
