@@ -22,7 +22,7 @@ public:
 	void CaptureSetupMutex();
 	void ReleaseSetupMutex();
 
-	void CreateSharedTexture(ID3D11Texture2D* gameTexture);
+	virtual void CreateSharedTexture(IUnknown* gameTexture) = 0;
 	void DestroySharedTexture();
 
 	DECLSPEC_NORETURN void DoubleBeepExit();
@@ -35,8 +35,9 @@ protected:
 
 	// The surface that we copy the current stereo game frame into. It is shared.
 	// It starts as a Texture so that it is created stereo, and is shared 
-	// via file mapped IPC. This is ID3D11Texture2D because Katanga is DX11 only.
-	ID3D11Texture2D* _shared_texture = nullptr;
+	// via file mapped IPC. This is IUnknown because we need to create shared surfaces
+	// from each API.  On the Katanga side, it will just see the share.
+	IUnknown* _shared_texture = nullptr;
 
 	// The _game_sharedhandle is set always a 32 bit value, not a pointer.  Even for
 	// x64 games, because Windows maps these.  Unity side will always use x32 value.
