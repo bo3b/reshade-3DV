@@ -165,7 +165,9 @@
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>copy /y  "$(TargetDir)reshade64.dll" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64\dxgi.dll"
-copy /y "$(TargetDir)reshade64.pdb" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64\dxgi.pdb"</Command>
+copy /y "$(TargetDir)reshade64.pdb" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64\dxgi.pdb"
+copy /y  "$(TargetDir)reshade64.dll" "W:\Games\Cyberpunk 2077\bin\x64\dxgi.dll"
+copy /y "$(TargetDir)reshade64.pdb" "W:\Games\Cyberpunk 2077\bin\x64\dxgi.pdb"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug App|Win32'">
