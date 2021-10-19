@@ -164,8 +164,10 @@
       <Command>powershell -ExecutionPolicy Bypass -File tools\verbuild.ps1 res\version.h -config "$(Configuration)" -platform "$(Platform)"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y  "$(TargetDir)reshade64.dll" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64\dxgi.dll"
+      <Command>echo "Copy to W:\Games\RiME\RiME\SirenGame\Binaries\Win64"
+copy /y  "$(TargetDir)reshade64.dll" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64\dxgi.dll"
 copy /y "$(TargetDir)reshade64.pdb" "W:\Games\RiME\RiME\SirenGame\Binaries\Win64\dxgi.pdb"
+echo "Copy to W:\Games\Cyberpunk 2077\bin\x64"
 copy /y  "$(TargetDir)reshade64.dll" "W:\Games\Cyberpunk 2077\bin\x64\dxgi.dll"
 copy /y "$(TargetDir)reshade64.pdb" "W:\Games\Cyberpunk 2077\bin\x64\dxgi.pdb"</Command>
     </PostBuildEvent>

@@ -188,7 +188,137 @@ void vr::ReleaseSetupMutex()
 	LOG(DEBUG) << "  ReleaseSetupMutex mutex: " << _setup_mutex << ", result: " <<  (ok ? "OK" : "FAIL");
 }
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// For when we need to create the offscreen Texture2D for our stereo
+// copy.  This is created when the CreateSwapChain is called, and also whenever
+// ResizeBuffers is called, because we need to change our destination copy
+// to always match what the game is drawing. Buffer width is already 2x game size,
+// as it comes from SuperDepth doubleTex.
+//
+// We create this texture in a DX11 context, so that it can be shared across
+// the IPC to the DX11 Katanga app which will use it shared.  While testing
+// DX12 sharing, there did not appear to be any way to share a DX12 surface
+// without getting errors on the Katanga consumption.
+//
+// When the APIs are created, they will create an API specific shared surface
+// based on the HANDLE that is returned here.  It will be new kind, NTHNANDLE,
+// so that DX12 can work. When the CaptureVRFrames are run for the different
+// APIs, they will copy from their API into this shared surface.
+//
+// This will also rewrite the global _game_sharedhandle with a new HANDLE as
+// needed, and the Unity side is expected to notice a change and setup a new
+// drawing texture as well.  This is thus polling on the Unity side, which is
+// not ideal, but it is one call here to fetch the 4 byte HANDLE every 11ms.  
+// There does not appear to be a good way for this code to notify the C# code,
+// although using a TriggerEvent with some C# interop might work.  We'll only
+// do that work if this proves to be a problem.
+
+// TODO: Should be DX9Ex surface.
+
+HANDLE vr::CreateSharedTexture(IUnknown* gameDoubleTex)
+{
+	HRESULT hr;
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+	IUnknown* oldGameTexture = _shared_texture;
+
+	LOG(INFO) << "vr::CreateSharedTexture called. _shared_texture: " << _shared_texture << " _game_sharedhandle: " << _game_sharedhandle << " _mapped_view: " << _mapped_view;
+
+	reinterpret_cast<ID3D11Texture2D*>(gameDoubleTex)->GetDesc(&desc);
+	
+	LOG(INFO) << "  +-----------------------------------------+-----------------------------------------+";
+	LOG(INFO) << "  | DoubleTex                               |                                         |";
+	LOG(INFO) << "  +-----------------------------------------+-----------------------------------------+";
+	LOG(INFO) << "  | Width                                   | " << std::setw(39) << desc.Width << " |";
+	LOG(INFO) << "  | Height                                  | " << std::setw(39) << desc.Height << " |";
+	if (const char *format_string = format_to_string(desc.Format); format_string != nullptr)
+		LOG(INFO) << "  | Format                                  | " << std::setw(39) << format_string << " |";
+	else
+		LOG(INFO) << "  | Format                                  | " << std::setw(39) << desc.Format << " |";
+	LOG(INFO) << "  +-----------------------------------------+-----------------------------------------+";
+
+	// Some games like TheSurge and Dishonored2 will specify a DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
+	// as their backbuffer.  This doesn't work for us because our output is going to the VR HMD,
+	// and thus we get a doubled up sRGB/gamma curve, which makes it too dark, and the in-game
+	// slider doesn't have enough range to correct.  
+	// If we get one of these sRGB formats, we are going to strip that and return the Linear
+	// version instead, so that we avoid this problem.  This allows us to use Gamma for the Unity
+	// app itself, which matches 90% of the games, and still handle these oddball games automatically.
+
+	if (desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	if (desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
+		desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+	// Reshade makes all buffers TypeLess, but we need the actual game type when creating a
+	// shared surface.
+
+	desc.Format = make_dxgi_format_normal(desc.Format);
+
+	LOG(INFO) << "  | Final Format                            | " << std::setw(39) << format_to_string(desc.Format) << " |";
+	LOG(INFO) << "  +-----------------------------------------+-----------------------------------------+";
+
+
+	// Create a DX11 device just for our use on this shared surface.  This way we can make it
+	// for DX9, DX11, DX12 and use this as the target shared surface for updating.
+
+	ID3D11Device* Device = nullptr;
+	UINT Flags = 0;
+#ifndef NDEBUG
+	Flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+	hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, Flags, nullptr, 0, D3D11_SDK_VERSION, &Device, nullptr, nullptr);
+	if (FAILED(hr)) FatalExit(L"Fail to create DX11 device for sharing", hr);
+
+	// We need the ID3D11Device1 interface to be able to share for DX12.
+	hr = Device->QueryInterface(__uuidof(ID3D11Device1), (LPVOID*)&_device);
+	if (FAILED(hr)) FatalExit(L"Fail to QueryInterface for ID3D11Device1", hr);
+
+	LOG(INFO) << "  Successfully created new DX11 sharing device: " << Device;
+
+
+	desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;	// Must add bind flag, so SRV can be created in Unity.
+	desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED;	// To be shared. maybe D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is better
+													// But we never seem to see any contention between game and Katanga.
+	//desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_NTHANDLE; // DX12 compatible handles.
+
+	hr = _device->CreateTexture2D(&desc, NULL, reinterpret_cast<ID3D11Texture2D**>(&_shared_texture));
+	if (FAILED(hr)) FatalExit(L"Fail to create shared stereo Texture", hr);
+
+	// Now create the HANDLE which is used to share surfaces. We now use CreateSharedHandle, as that will allow us to
+	// create an NTHANDLE instead, which is necessary for DX12.  This follows the model from:
+	// https://docs.microsoft.com/en-us/windows/desktop/api/d3d11/nf-d3d11-id3d11device-opensharedresource
+
+	IDXGIResource1* pDXGIResource1 = NULL;
+	hr = _shared_texture->QueryInterface(__uuidof(IDXGIResource1), (LPVOID*)&pDXGIResource1);
+	{
+		if (FAILED(hr))	FatalExit(L"Fail to QueryInterface on shared surface", hr);
+
+		hr = pDXGIResource1->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, L"DX11 Shared Handle in game",
+			&_game_sharedhandle);
+		if (FAILED(hr) || _game_sharedhandle == NULL) FatalExit(L"Fail to pDXGIResource->CreateSharedHandle", hr);
+	}
+	pDXGIResource1->Release();
+
+	LOG(INFO) << "  Successfully created new DX11 _shared_texture: " << _shared_texture << ", new shared _game_sharedhandle: " << _game_sharedhandle;
+
+	// Move that shared handle into the MappedView to IPC the Handle to Katanga.
+	// The HANDLE is always 32 bit, even for 64 bit processes.
+	// https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
+	//
+	// This magic line of code will fire off the Katanga side rebuilding of it's drawing pipeline and surface.
+
+	*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
+
+	// If we already had created one, let the old one go.  We do it after the recreation
+	// here fills in the prior globals, to avoid possible dead structure usage in the
+	// Unity app.
+
+	LOG(INFO) << "  Release stale _shared_texture: " << oldGameTexture;
+	if (oldGameTexture)
+		oldGameTexture->Release();
+
+	return _game_sharedhandle;
+}
 
 // When the DoubleTex is unloaded, our shared handle becomes invalid.  This can happen
 // if they turn off the effect, but also when the game calls ResizeBuffers.  It will
@@ -206,8 +336,12 @@ void vr::DestroySharedTexture()
 	IUnknown* oldGameTexture = _shared_texture;
 
 	// Tell Katanga it's gone, so it can drop its buffers.
+	HANDLE dispose = _game_sharedhandle;
 	_game_sharedhandle = NULL;
 	*(PUINT)(_mapped_view) = PtrToUint(_game_sharedhandle);
+
+	// Release it after we've just told Katanga to stop using it, not before.
+	CloseHandle(dispose);
 
 	if (oldGameTexture)
 	{
@@ -216,5 +350,8 @@ void vr::DestroySharedTexture()
 		oldGameTexture->Release();
 		_shared_texture = nullptr;
 	}
+
+	// Release the DX11 device that has only been used for the share
+	_device->Release();
 }
 
